@@ -63,8 +63,36 @@ ClearOam:
     ld a, %11100100
     ld [rOBP0], a
 
-Done:
-    jp Done
+    ; Initialize global variables
+    ld a, 0
+    ld [wFrameCounter], a
+
+Main:
+    ; Wait until it's *not* VBlank
+    ld a, [rLY]
+    cp 144
+    jp nc, Main
+WaitVBlank2:
+    ld a, [rLY]
+    cp 144
+    jp c, WaitVBlank2
+
+    ld a, [wFrameCounter]
+    inc a
+    ld [wFrameCounter], a
+    cp a, 15 ; Every 15 frames (a quarter of a second), run the following code
+    jp nz, Main
+
+    ; Reset the frame counter back to 0
+    ld a, 0
+    ld [wFrameCounter], a
+
+
+    ; Move the player one pixel to the right.
+    ld a, [_OAMRAM + 1]
+    inc a
+    ld [_OAMRAM + 1], a
+    jp Main
 
 ; Copy bytes from one area to another.
 ; @param de: Source
@@ -238,3 +266,7 @@ Player:
     dw `02111120
     dw `20202022
 PlayerEnd:
+
+SECTION "Counter", WRAM0
+wFrameCounter: db
+
