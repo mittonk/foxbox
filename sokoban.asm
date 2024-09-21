@@ -136,7 +136,7 @@ CheckLeft:
     and a, PADF_LEFT
     jp z, CheckRight
 Left:
-    ; Move the paddle one square to the left.
+    ; Move the player one square to the left.
     ld a, [_OAMRAM + 1]
     sub a, 8
     ; If we've already hit the edge of the playfield, don't move.
@@ -169,7 +169,7 @@ CheckRight:
     and a, PADF_RIGHT
     jp z, CheckUp
 Right:
-    ; Move the paddle one square to the right.
+    ; Move the player one square to the right.
     ld a, [_OAMRAM + 1]
     add a, 8
     ; If we've already hit the edge of the playfield, don't move.
@@ -205,7 +205,7 @@ CheckUp:
     and a, PADF_UP
     jp z, CheckDown
 Up:
-    ; Move the paddle one square up.
+    ; Move the player one square up.
     ld a, [_OAMRAM]
     sub a, 8
     ; If we've already hit the edge of the playfield, don't move.
@@ -227,6 +227,13 @@ Up:
     call IsWallTile
     jp z, Main
 
+    ; Is there a crate?
+    ; TODO (mittonk)
+    ; Can the crate move?
+    ; TODO (mittonk)
+    ; No: blocked.
+    ; Yes: Move crate first.
+
     ; All clear, move.
     ld a, d ; Recover dest
     ld [_OAMRAM], a
@@ -239,7 +246,7 @@ CheckDown:
     and a, PADF_DOWN
     jp z, Main
 Down:
-    ; Move the paddle one square down.
+    ; Move the player one square down.
     ld a, [_OAMRAM]
     add a, 8
     ; If we've already hit the edge of the playfield, don't move.
