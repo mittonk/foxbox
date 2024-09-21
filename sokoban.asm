@@ -142,6 +142,24 @@ Left:
     ; If we've already hit the edge of the playfield, don't move.
     cp a, 8
     jp z, Main
+
+    ; If we hit a wall, don't move.
+    ; Remember to offset the OAM position!
+    ; (8, 16) in OAM coordinates is (0, 0) on the screen.
+    ld d, a ; Save dest position
+    ld a, [_OAMRAM]
+    sub a, 16
+    ld c, a
+    ld a, [_OAMRAM + 1]
+    sub a, 8 + 8
+    ld b, a
+    call GetTileByPixel ; Returns tile address in hl
+    ld a, [hl]
+    call IsWallTile
+    jp z, Main
+
+    ; All clear, move.
+    ld a, d ; Recover dest
     ld [_OAMRAM + 1], a
     jp Main
 
@@ -157,6 +175,26 @@ Right:
     ; If we've already hit the edge of the playfield, don't move.
     cp a, 160
     jp z, Main
+
+
+    ; If we hit a wall, don't move.
+    ; Remember to offset the OAM position!
+    ; (8, 16) in OAM coordinates is (0, 0) on the screen.
+    ld d, a ; Save dest position
+    ld a, [_OAMRAM]
+    sub a, 16
+    ld c, a
+    ld a, [_OAMRAM + 1]
+    sub a, 8 - 8
+    ld b, a
+    call GetTileByPixel ; Returns tile address in hl
+    ld a, [hl]
+    call IsWallTile
+    jp z, Main
+
+    ; All clear, move.
+    ; TODO (mittonk): Crate collision.
+    ld a, d ; Recover dest
     ld [_OAMRAM + 1], a
     jp Main
 
@@ -173,6 +211,24 @@ Up:
     ; If we've already hit the edge of the playfield, don't move.
     cp a, 16
     jp z, Main
+
+    ; If we hit a wall, don't move.
+    ; Remember to offset the OAM position!
+    ; (8, 16) in OAM coordinates is (0, 0) on the screen.
+    ld d, a ; Save dest position
+    ld a, [_OAMRAM]
+    sub a, 8 + 16
+    ld c, a
+    ld a, [_OAMRAM + 1]
+    sub a, 8
+    ld b, a
+    call GetTileByPixel ; Returns tile address in hl
+    ld a, [hl]
+    call IsWallTile
+    jp z, Main
+
+    ; All clear, move.
+    ld a, d ; Recover dest
     ld [_OAMRAM], a
     jp Main
 
@@ -189,7 +245,25 @@ Down:
     ; If we've already hit the edge of the playfield, don't move.
     cp a, 152
     jp z, Main
-    ld [_OAMRAM], a
+    
+    ; If we hit a wall, don't move.
+    ; Remember to offset the OAM position!
+    ; (8, 16) in OAM coordinates is (0, 0) on the screen.
+    ld d, a ; Save dest position
+    ld a, [_OAMRAM]
+    sub a, 16 - 8
+    ld c, a
+    ld a, [_OAMRAM + 1]
+    sub a, 8
+    ld b, a
+    call GetTileByPixel ; Returns tile address in hl
+    ld a, [hl]
+    call IsWallTile
+    jp z, Main
+
+    ; All clear, move.
+    ld a, d ; Recover dest
+ld [_OAMRAM], a
     jp Main
 
 
@@ -229,6 +303,46 @@ UpdateKeys:
   or a, $F0 ; A7-4 = 1; A3-0 = unpressed keys
 .knownret
   ret
+
+; Convert a pixel position to a tilemap address
+; hl = $9800 + X + Y * 32
+; @param b: X
+; @param c: Y
+; @return hl: tile address
+GetTileByPixel:
+    ; First, we need to divide by 8 to convert a pixel position to a tile
+    ; position.
+    ; After this we want to multiply the Y position by 32.
+    ; These operations effectively cancel out so we only need to mask the Y
+    ; value.
+    ld a, c
+    and a, %11111000
+    ld l, a
+    ld h, 0
+    ; Now we have the position * 8 in hl
+    add hl, hl ; position * 16
+    add hl, hl ; position * 32
+    ; Convert the X position to an offset.
+    ld a, b
+    srl a ; a / 2
+    srl a ; a / 4
+    srl a ; a / 8
+    ; Add the two offsets together.
+    add a, l
+    ld l, a
+    adc a, h
+    sub a, l
+    ld h, a
+    ; Add the offset to the tilemap's base address, and we are done!
+    ld bc, $9800
+    add hl, bc
+    ret
+
+; @param a: tile ID
+; @return z: set if a is a wall.
+IsWallTile:
+    cp a, $02
+    ret
 
 ; Copy bytes from one area to another.
 ; @param de: Source
