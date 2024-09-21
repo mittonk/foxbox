@@ -28,10 +28,10 @@ WaitVBlank:
     ld bc, TilemapEnd - Tilemap
     call Memcopy
 
-    ; Copy the player tile
-    ld de, Player
+    ; Copy the player and crate tiles
+    ld de, Objects
     ld hl, $8000
-    ld bc, PlayerEnd - Player
+    ld bc, ObjectsEnd - Objects
     call Memcopy
 
     ; Clear object storage
@@ -49,8 +49,41 @@ ClearOam:
     ld [hli], a
     ld a, 48 + 8
     ld [hli], a
+    ld a, 0 ; Player
+    ld [hli], a
+    ld [hli], a
+
+    ; Init crate object 1
+    ld hl, _OAMRAM + 4
+    ld a, 80 + 16
+    ld [hli], a
+    ld a, 56 + 8
+    ld [hli], a
+    ld a, 1  ; Crate
+    ld [hli], a
     ld a, 0
     ld [hli], a
+
+    ; Init crate object 2
+    ld hl, _OAMRAM + 8 ; TODO (mittonk): Naming?
+    ld a, 88 + 16
+    ld [hli], a
+    ld a, 56 + 8
+    ld [hli], a
+    ld a, 1  ; Crate
+    ld [hli], a
+    ld a, 0
+    ld [hli], a
+
+    ; Init crate object 3
+    ld hl, _OAMRAM + 12
+    ld a, 88 + 16
+    ld [hli], a
+    ld a, 64 + 8
+    ld [hli], a
+    ld a, 1  ; Crate
+    ld [hli], a
+    ld a, 0
     ld [hli], a
 
     ; Turn the LCD on
@@ -62,6 +95,8 @@ ClearOam:
     ld [rBGP], a
     ld a, %11100100
     ld [rOBP0], a
+    ld a, %11100100
+    ld [rOBP1], a
 
     ; Initialize global variables
     ld a, 0
@@ -341,8 +376,8 @@ Tilemap:
 
 	db $04, $00, $00, $00, $00, $00, $02, $02, $02, $02, $02, $00, $00, $00, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
 	db $04, $00, $00, $00, $00, $00, $02, $01, $01, $01, $02, $02, $02, $02, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $00, $02, $01, $01, $01, $01, $01, $01, $02, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $00, $02, $01, $01, $01, $01, $01, $03, $02, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $04, $00, $00, $00, $00, $00, $02, $01, $01, $01, $02, $01, $01, $02, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $04, $00, $00, $00, $00, $00, $02, $02, $01, $01, $01, $01, $03, $02, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
 	db $04, $00, $00, $00, $00, $02, $02, $02, $01, $02, $02, $02, $03, $02, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
 
 	db $04, $00, $00, $00, $00, $02, $01, $01, $01, $02, $00, $02, $03, $02, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
@@ -357,7 +392,8 @@ Tilemap:
 
 TilemapEnd:
 
-Player:
+Objects:
+    ; 8000 Player
     dw `02000020
     dw `02122120
     dw `02311320
@@ -366,7 +402,18 @@ Player:
     dw `00211200
     dw `02111120
     dw `20202022
-PlayerEnd:
+
+    ; 8008 Crate
+    dw `33333333
+    dw `33222233
+    dw `32322323
+    dw `32233223
+    dw `32233223
+    dw `32322323
+    dw `33222233
+    dw `33333333
+
+ObjectsEnd:
 
 SECTION "Counter", WRAM0
 wFrameCounter: db
