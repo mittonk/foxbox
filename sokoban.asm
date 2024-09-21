@@ -263,7 +263,7 @@ Down:
 
     ; All clear, move.
     ld a, d ; Recover dest
-ld [_OAMRAM], a
+    ld [_OAMRAM], a
     jp Main
 
 
