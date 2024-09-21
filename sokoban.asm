@@ -20,38 +20,65 @@ WaitVBlank:
     ld de, Tiles
     ld hl, $9000
     ld bc, TilesEnd - Tiles
-CopyTiles:
-    ld a, [de]
-    ld [hli], a
-    inc de
-    dec bc
-    ld a, b
-    or a, c
-    jp nz, CopyTiles
+    call Memcopy
 
     ; Copy the tilemap
     ld de, Tilemap
     ld hl, $9800
     ld bc, TilemapEnd - Tilemap
-CopyTilemap:
+    call Memcopy
+
+    ; Copy the player tile
+    ld de, Player
+    ld hl, $8000
+    ld bc, PlayerEnd - Player
+    call Memcopy
+
+    ; Clear object storage
+    ld a, 0
+    ld b, 160
+    ld hl, _OAMRAM
+ClearOam:
+    ld [hli], a
+    dec b
+    jp nz, ClearOam
+
+    ; Init player object
+    ld hl, _OAMRAM
+    ld a, 96 + 16
+    ld [hli], a
+    ld a, 48 + 8
+    ld [hli], a
+    ld a, 0
+    ld [hli], a
+    ld [hli], a
+
+    ; Turn the LCD on
+    ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON
+    ld [rLCDC], a
+
+    ; During the first (blank) frame, initialize display registers
+    ld a, %11100100
+    ld [rBGP], a
+    ld a, %11100100
+    ld [rOBP0], a
+
+Done:
+    jp Done
+
+; Copy bytes from one area to another.
+; @param de: Source
+; @param hl: Destination
+; @param bc: Length
+Memcopy:
     ld a, [de]
     ld [hli], a
     inc de
     dec bc
     ld a, b
     or a, c
-    jp nz, CopyTilemap
-
-    ; Turn the LCD on
-    ld a, LCDCF_ON | LCDCF_BGON
-    ld [rLCDC], a
-
-    ; During the first (blank) frame, initialize display registers
-    ld a, %11100100 ; TODO (kmitton): Grok this
-    ld [rBGP], a
-
-Done:
-    jp Done
+    jp nz, Memcopy
+    ret
 
 Tiles:
 	; 00 Outside
@@ -200,3 +227,14 @@ Tilemap:
 	db $0a, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
 
 TilemapEnd:
+
+Player:
+    dw `02000020
+    dw `02122120
+    dw `02311320
+    dw `00211200
+    dw `00122100
+    dw `00211200
+    dw `02111120
+    dw `20202022
+PlayerEnd:
