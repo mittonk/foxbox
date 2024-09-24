@@ -9,7 +9,7 @@ EntryPoint:
     ; Do not turn the LCD off outside of VBlank
 WaitVBlank:
     ld a, [rLY]
-    cp 144
+    cp SCRN_Y
     jp c, WaitVBlank
 
     ; Turn the LCD off
@@ -113,11 +113,11 @@ ClearOam:
 Main:
     ; Wait until it's *not* VBlank
     ld a, [rLY]
-    cp 144
+    cp SCRN_Y
     jp nc, Main
 WaitVBlank2:
     ld a, [rLY]
-    cp 144
+    cp SCRN_Y
     jp c, WaitVBlank2
 
     ; Game clock
@@ -264,7 +264,7 @@ Right:
     sub a, 8  ; Leave Dest X in a
 
     ; If we've already hit the edge of the playfield, don't move.
-    cp a, 160
+    cp a, SCRN_X
     jp z, Main
 
     ; If dest is a wall, don't move.
@@ -308,7 +308,7 @@ CanCrateMoveRight:
     ; 
     ; If we've already hit the edge of the playfield, don't move.
     ld a, [wFurtherX]
-    cp a, 160
+    cp a, SCRN_X
     jp z, Main
 
     ; If Further is a wall, bail.
