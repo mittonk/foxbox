@@ -45,9 +45,9 @@ ClearOam:
 
     ; Init player object
     ld hl, _OAMRAM
-    ld a, 96 + 16
+    ld a, 96 + OAM_Y_OFS
     ld [hli], a
-    ld a, 48 + 8
+    ld a, 48 + OAM_X_OFS
     ld [hli], a
     ld a, 0 ; Player
     ld [hli], a
@@ -55,9 +55,9 @@ ClearOam:
 
     ; Init crate object 1
     ld hl, _OAMRAM + 4
-    ld a, 80 + 16
+    ld a, 80 + OAM_Y_OFS
     ld [hli], a
-    ld a, 56 + 8
+    ld a, 56 + OAM_X_OFS
     ld [hli], a
     ld a, 1  ; Crate
     ld [hli], a
@@ -66,9 +66,9 @@ ClearOam:
 
     ; Init crate object 2
     ld hl, _OAMRAM + 8 ; TODO (mittonk): Naming?
-    ld a, 88 + 16
+    ld a, 88 + OAM_Y_OFS
     ld [hli], a
-    ld a, 56 + 8
+    ld a, 56 + OAM_X_OFS
     ld [hli], a
     ld a, 1  ; Crate
     ld [hli], a
@@ -77,9 +77,9 @@ ClearOam:
 
     ; Init crate object 3
     ld hl, _OAMRAM + 12
-    ld a, 88 + 16
+    ld a, 88 + OAM_Y_OFS
     ld [hli], a
-    ld a, 64 + 8
+    ld a, 64 + OAM_X_OFS
     ld [hli], a
     ld a, 1  ; Crate
     ld [hli], a
@@ -157,7 +157,7 @@ Left:
     add a, 8  ; Leave Dest X in a
 
     ; If we've already hit the edge of the playfield, don't move.
-    cp a, 8
+    cp a, OAM_X_OFS
     jp z, Main
 
     ; If dest is a wall, don't move.
@@ -201,7 +201,7 @@ CanCrateMoveLeft:
     ; 
     ; If we've already hit the edge of the playfield, don't move.
     ld a, [wFurtherX]
-    cp a, 8
+    cp a, OAM_X_OFS
     jp z, Main
 
     ; If Further is a wall, bail.
@@ -371,7 +371,7 @@ Up:
     add a, 8  ; Leave Dest Y in a
 
     ; If we've already hit the edge of the playfield, don't move.
-    cp a, 16
+    cp a, OAM_Y_OFS
     jp z, Main
 
     ; If dest is a wall, don't move.
@@ -415,7 +415,7 @@ CanCrateMoveUp:
     ; 
     ; If we've already hit the edge of the playfield, don't move.
     ld a, [wFurtherY]
-    cp a, 16
+    cp a, OAM_Y_OFS
     jp z, Main
 
     ; If Further is a wall, bail.
@@ -686,10 +686,10 @@ PushingCrateY2:
 GetTileByOam:
     ; (8, 16) in OAM coordinates is (0, 0) on the screen.
     ld a, c
-    sub a, 16
+    sub a, OAM_Y_OFS
     ld c, a
     ld a, b
-    sub a, 8
+    sub a, OAM_X_OFS
     ld b, a
     call GetTileByPixel ; Returns tile address in hl
     ret
