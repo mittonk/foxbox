@@ -103,6 +103,11 @@ ClearOam:
     ld [wFrameCounter], a
     ld [wCurKeys], a
     ld [wNewKeys], a
+    ld [wDestY], a
+    ld [wDestX], a
+    ld [wFurtherY], a
+    ld [wFurtherX], a
+    ld [wPushingCrate], a
 
 
 Main:
@@ -206,45 +211,50 @@ CheckUp:
     jp z, CheckDown
 Up:
     ; Move the player one square up.
+
+    ; Scope out our Dest and Further locations
+    ; X locations all same
+    ld a, [_OAMRAM+1]
+    ld [wDestX], a
+    ld [wFurtherX], a
+    ; Y in a row
     ld a, [_OAMRAM]
     sub a, 8
+    ld [wDestY], a
+    sub a, 8
+    ld [wFurtherY], a
+    add a, 8  ; Leave Dest Y in a
+
     ; If we've already hit the edge of the playfield, don't move.
     cp a, 16
     jp z, Main
 
-    ; If we hit a wall, don't move.
-    ; Remember to offset the OAM position!
-    ; (8, 16) in OAM coordinates is (0, 0) on the screen.
-    ld d, a ; Save dest position
-    ld a, [_OAMRAM]
-    sub a, 8 + 16
+    ; If dest is a wall, don't move.
+    ld a, [wDestY]
     ld c, a
-    ld a, [_OAMRAM + 1]
-    sub a, 8
+    ld a, [wDestX]
     ld b, a
-    call GetTileByPixel ; Returns tile address in hl
+    call GetTileByOam ; Returns tile address in hl
     ld a, [hl]
     call IsWallTile
     jp z, Main
 
 IsCrateUp:
     ; Is there a crate?
-    ; b: dest y pixel
-    ; c: dest x pixel
+    ; b: dest x oam
+    ; c: dest y oam
     ; hl: coordinate to modify
-    ld b, d
-    ld a, [_OAMRAM+1]
+    ld a, [wDestY]
     ld c, a
+    ld a, [wDestX]
+    ld b, a
     ld e, 0  ; Crate number
-    ld hl, _OAMRAM+4 ; Crate 0 Y
     call IsCrate0
     jp z, CanCrateMoveUp
     ld e, 1  ; Crate number
-    ld hl, _OAMRAM+8 ; Crate 1 Y
     call IsCrate1
     jp z, CanCrateMoveUp
     ld e, 2  ; Crate number
-    ld hl, _OAMRAM+12 ; Crate 2 Y
     call IsCrate2
     jp z, CanCrateMoveUp
   
@@ -252,22 +262,21 @@ IsCrateUp:
     jp MoveUp
 
 CanCrateMoveUp:
+    ; Remember which crate we're pushing.
+    ld a, e
+    ld [wPushingCrate], a
     ; Can the crate move?
     ; TODO (mittonk)
     ; No: blocked.
+    ; TODO (mittonk)
     ; Yes: Move crate first.
-    
-    ; Get active coordinate of moving crate
-    ld a, [hl]  ; Crate N Y, pixel
-    sub a, 8
-    ; If we've already hit the edge of the playfield, don't move.
-    cp a, 16
-    jp z, Main
+    call PushingCrateY ; Active addr in hl
+    ld a, [wFurtherY]
     ld [hl], a  ; Actually move crate
 
 MoveUp:
     ; All clear, move.
-    ld a, d ; Recover dest
+    ld a, [wDestY]
     ld [_OAMRAM], a
     jp Main
 
@@ -308,35 +317,35 @@ Down:
 
 IsCrate0:
     ; Is there a crate?
-    ; b: dest y pixel
-    ; c: dest x pixel
+    ; b: dest x oam
+    ; c: dest y oam
     ld a, [_OAMRAM+4]
-    cp a, b
+    cp a, c
     ret nz  ; Y doesn't match, bail.
     ld a, [_OAMRAM+4+1]
-    cp a, c
+    cp a, b
     ret  ; Z=true means Y, X both match.
 
 IsCrate1:
     ; Is there a crate?
-    ; b: dest y pixel
-    ; c: dest x pixel
+    ; b: dest x oam
+    ; c: dest y oam
     ld a, [_OAMRAM+8]
-    cp a, b
+    cp a, c
     ret nz  ; Y doesn't match, bail.
     ld a, [_OAMRAM+8+1]
-    cp a, c
+    cp a, b
     ret  ; Z=true means Y, X both match.
 
 IsCrate2:
     ; Is there a crate?
-    ; b: dest y pixel
-    ; c: dest x pixel
+    ; b: dest x oam
+    ; c: dest y oam
     ld a, [_OAMRAM+12]
-    cp a, b
+    cp a, c
     ret nz  ; Y doesn't match, bail.
     ld a, [_OAMRAM+12+1]
-    cp a, c
+    cp a, b
     ret  ; Z=true means Y, X both match.
 
   ; https://gbdev.io/gb-asm-tutorial/part2/input.html
@@ -376,10 +385,48 @@ UpdateKeys:
 .knownret
   ret
 
+; Get the active Y axis for the crate we're pushing.
+; @return hl: Y axis storage for active crate
+PushingCrateY:
+    ld a, [wPushingCrate]
+    cp 0
+    jp z, PushingCrateY0
+    cp 1
+    jp z, PushingCrateY1
+    cp 2
+    jp z, PushingCrateY2
+    jp Main ; Shouldn't happen
+PushingCrateY0:
+    ld hl, _OAMRAM+4
+    ret
+PushingCrateY1:
+    ld hl, _OAMRAM+8
+    ret
+PushingCrateY2:
+    ld hl, _OAMRAM+12
+    ret
+
+
+; Convert a OAM position to a tilemap address
+; hl = $9800 + pixelX + pixelY * 32
+; @param b: X, oam
+; @param c: Y, oam
+; @return hl: tile address
+GetTileByOam:
+    ; (8, 16) in OAM coordinates is (0, 0) on the screen.
+    ld a, c
+    sub a, 16
+    ld c, a
+    ld a, b
+    sub a, 8
+    ld b, a
+    call GetTileByPixel ; Returns tile address in hl
+    ret
+
 ; Convert a pixel position to a tilemap address
 ; hl = $9800 + X + Y * 32
-; @param b: X
-; @param c: Y
+; @param b: X, pixel
+; @param c: Y, pixel
 ; @return hl: tile address
 GetTileByPixel:
     ; First, we need to divide by 8 to convert a pixel position to a tile
@@ -613,4 +660,5 @@ wDestY: db
 wDestX: db
 wFurtherY: db
 wFurtherX: db
+wPushingCrate: db
 
