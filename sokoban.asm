@@ -266,9 +266,42 @@ CanCrateMoveUp:
     ld a, e
     ld [wPushingCrate], a
     ; Can the crate move?
-    ; TODO (mittonk)
-    ; No: blocked.
-    ; TODO (mittonk)
+    ; Check that Further isn't the edge, isn't a wall, and doesn't have a crate.
+    ; 
+    ; If we've already hit the edge of the playfield, don't move.
+    ld a, [wFurtherY]
+    cp a, 16
+    jp z, Main
+
+    ; If Further is a wall, bail.
+    ld a, [wFurtherY]
+    ld c, a
+    ld a, [wFurtherX]
+    ld b, a
+    call GetTileByOam ; Returns tile address in hl
+    ld a, [hl]
+    call IsWallTile
+    jp z, Main
+
+    ; Is there a crate?
+    ; b: dest x oam
+    ; c: dest y oam
+    ld a, [wFurtherY]
+    ld c, a
+    ld a, [wFurtherX]
+    ld b, a
+    ld e, 0  ; Crate number
+    call IsCrate0
+    jp z, Main
+    ld e, 1  ; Crate number
+    call IsCrate1
+    jp z, Main
+    ld e, 2  ; Crate number
+    call IsCrate2
+    jp z, Main
+    ; OK, so the crate can be pushed.  Do it.
+
+MoveCrateUp:
     ; Yes: Move crate first.
     call PushingCrateY ; Active addr in hl
     ld a, [wFurtherY]
