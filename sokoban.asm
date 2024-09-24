@@ -127,7 +127,7 @@ WaitVBlank2:
     ld [wFrameCounter], a
 
 
-    ; Check the current keys every frame and move left or right.
+    ; Check for input.
     call UpdateKeys
 
     ; First, check if the left button is pressed.
@@ -227,13 +227,45 @@ Up:
     call IsWallTile
     jp z, Main
 
+IsCrateUp:
     ; Is there a crate?
-    ; TODO (mittonk)
+    ; b: dest y pixel
+    ; c: dest x pixel
+    ; hl: coordinate to modify
+    ld b, d
+    ld a, [_OAMRAM+1]
+    ld c, a
+    ld e, 0  ; Crate number
+    ld hl, _OAMRAM+4 ; Crate 0 Y
+    call IsCrate0
+    jp z, CanCrateMoveUp
+    ld e, 1  ; Crate number
+    ld hl, _OAMRAM+8 ; Crate 1 Y
+    call IsCrate1
+    jp z, CanCrateMoveUp
+    ld e, 2  ; Crate number
+    ld hl, _OAMRAM+12 ; Crate 2 Y
+    call IsCrate2
+    jp z, CanCrateMoveUp
+  
+    ; No crate there.
+    jp MoveUp
+
+CanCrateMoveUp:
     ; Can the crate move?
     ; TODO (mittonk)
     ; No: blocked.
     ; Yes: Move crate first.
+    
+    ; Get active coordinate of moving crate
+    ld a, [hl]  ; Crate N Y, pixel
+    sub a, 8
+    ; If we've already hit the edge of the playfield, don't move.
+    cp a, 16
+    jp z, Main
+    ld [hl], a  ; Actually move crate
 
+MoveUp:
     ; All clear, move.
     ld a, d ; Recover dest
     ld [_OAMRAM], a
@@ -273,6 +305,39 @@ Down:
     ld [_OAMRAM], a
     jp Main
 
+
+IsCrate0:
+    ; Is there a crate?
+    ; b: dest y pixel
+    ; c: dest x pixel
+    ld a, [_OAMRAM+4]
+    cp a, b
+    ret nz  ; Y doesn't match, bail.
+    ld a, [_OAMRAM+4+1]
+    cp a, c
+    ret  ; Z=true means Y, X both match.
+
+IsCrate1:
+    ; Is there a crate?
+    ; b: dest y pixel
+    ; c: dest x pixel
+    ld a, [_OAMRAM+8]
+    cp a, b
+    ret nz  ; Y doesn't match, bail.
+    ld a, [_OAMRAM+8+1]
+    cp a, c
+    ret  ; Z=true means Y, X both match.
+
+IsCrate2:
+    ; Is there a crate?
+    ; b: dest y pixel
+    ; c: dest x pixel
+    ld a, [_OAMRAM+12]
+    cp a, b
+    ret nz  ; Y doesn't match, bail.
+    ld a, [_OAMRAM+12+1]
+    cp a, c
+    ret  ; Z=true means Y, X both match.
 
   ; https://gbdev.io/gb-asm-tutorial/part2/input.html
 UpdateKeys:
@@ -542,4 +607,10 @@ wFrameCounter: db
 SECTION "Input Variables", WRAM0
 wCurKeys: db
 wNewKeys: db
+
+SECTION "Game Variables", WRAM0
+wDestY: db
+wDestX: db
+wFurtherY: db
+wFurtherX: db
 
