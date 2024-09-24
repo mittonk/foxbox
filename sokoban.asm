@@ -150,11 +150,11 @@ Left:
     ld [wFurtherY], a
     ; X in a row
     ld a, [_OAMRAM+1]
-    sub a, 8
+    sub a, 16
     ld [wDestX], a
-    sub a, 8
+    sub a, 16
     ld [wFurtherX], a
-    add a, 8  ; Leave Dest X in a
+    add a, 16  ; Leave Dest X in a
 
     ; If we've already hit the edge of the playfield, don't move.
     cp a, OAM_X_OFS
@@ -257,11 +257,11 @@ Right:
     ld [wFurtherY], a
     ; X in a row
     ld a, [_OAMRAM+1]
-    add a, 8
+    add a, 16
     ld [wDestX], a
-    add a, 8
+    add a, 16
     ld [wFurtherX], a
-    sub a, 8  ; Leave Dest X in a
+    sub a, 16  ; Leave Dest X in a
 
     ; If we've already hit the edge of the playfield, don't move.
     cp a, SCRN_X
@@ -364,11 +364,11 @@ Up:
     ld [wFurtherX], a
     ; Y in a row
     ld a, [_OAMRAM]
-    sub a, 8
+    sub a, 16
     ld [wDestY], a
-    sub a, 8
+    sub a, 16
     ld [wFurtherY], a
-    add a, 8  ; Leave Dest Y in a
+    add a, 16  ; Leave Dest Y in a
 
     ; If we've already hit the edge of the playfield, don't move.
     cp a, OAM_Y_OFS
@@ -470,11 +470,11 @@ Down:
     ld [wFurtherX], a
     ; Y in a row
     ld a, [_OAMRAM]
-    add a, 8
+    add a, 16
     ld [wDestY], a
-    add a, 8
+    add a, 16
     ld [wFurtherY], a
-    sub a, 8  ; Leave Dest Y in a
+    sub a, 16  ; Leave Dest Y in a
 
     ; If we've already hit the edge of the playfield, don't move.
     cp a, 152
