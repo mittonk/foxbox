@@ -141,32 +141,106 @@ CheckLeft:
     and a, PADF_LEFT
     jp z, CheckRight
 Left:
-    ; Move the player one square to the left.
-    ld a, [_OAMRAM + 1]
+    ; Move the player one square left.
+
+    ; Scope out our Dest and Further locations
+    ; Y locations all same
+    ld a, [_OAMRAM]
+    ld [wDestY], a
+    ld [wFurtherY], a
+    ; X in a row
+    ld a, [_OAMRAM+1]
     sub a, 8
+    ld [wDestX], a
+    sub a, 8
+    ld [wFurtherX], a
+    add a, 8  ; Leave Dest X in a
+
     ; If we've already hit the edge of the playfield, don't move.
     cp a, 8
     jp z, Main
 
-    ; If we hit a wall, don't move.
-    ; Remember to offset the OAM position!
-    ; (8, 16) in OAM coordinates is (0, 0) on the screen.
-    ld d, a ; Save dest position
-    ld a, [_OAMRAM]
-    sub a, 16
+    ; If dest is a wall, don't move.
+    ld a, [wDestY]
     ld c, a
-    ld a, [_OAMRAM + 1]
-    sub a, 8 + 8
+    ld a, [wDestX]
     ld b, a
-    call GetTileByPixel ; Returns tile address in hl
+    call GetTileByOam ; Returns tile address in hl
     ld a, [hl]
     call IsWallTile
     jp z, Main
 
+IsCrateLeft:
+    ; Is there a crate?
+    ; b: dest x oam
+    ; c: dest y oam
+    ; hl: coordinate to modify
+    ld a, [wDestY]
+    ld c, a
+    ld a, [wDestX]
+    ld b, a
+    ld e, 0  ; Crate number
+    call IsCrate0
+    jp z, CanCrateMoveLeft
+    ld e, 1  ; Crate number
+    call IsCrate1
+    jp z, CanCrateMoveLeft
+    ld e, 2  ; Crate number
+    call IsCrate2
+    jp z, CanCrateMoveLeft
+  
+    ; No crate there.
+    jp MoveLeft
+
+CanCrateMoveLeft:
+    ; Remember which crate we're pushing.
+    ld a, e
+    ld [wPushingCrate], a
+    ; Can the crate move?
+    ; Check that Further isn't the edge, isn't a wall, and doesn't have a crate.
+    ; 
+    ; If we've already hit the edge of the playfield, don't move.
+    ld a, [wFurtherX]
+    cp a, 8
+    jp z, Main
+
+    ; If Further is a wall, bail.
+    ld a, [wFurtherY]
+    ld c, a
+    ld a, [wFurtherX]
+    ld b, a
+    call GetTileByOam ; Returns tile address in hl
+    ld a, [hl]
+    call IsWallTile
+    jp z, Main
+
+    ; Is there a crate?
+    ; b: dest x oam
+    ; c: dest y oam
+    ld a, [wFurtherY]
+    ld c, a
+    ld a, [wFurtherX]
+    ld b, a
+    call IsCrate0
+    jp z, Main
+    call IsCrate1
+    jp z, Main
+    call IsCrate2
+    jp z, Main
+    ; OK, so the crate can be pushed.  Do it.
+
+MoveCrateLeft:
+    ; Yes: Move crate first.
+    call PushingCrateX ; Active addr in hl
+    ld a, [wFurtherX]
+    ld [hl], a  ; Actually move crate
+
+MoveLeft:
     ; All clear, move.
-    ld a, d ; Recover dest
-    ld [_OAMRAM + 1], a
+    ld a, [wDestX]
+    ld [_OAMRAM+1], a
     jp Main
+
 
 ; Then check the right button.
 CheckRight:
@@ -174,33 +248,104 @@ CheckRight:
     and a, PADF_RIGHT
     jp z, CheckUp
 Right:
-    ; Move the player one square to the right.
-    ld a, [_OAMRAM + 1]
+    ; Move the player one square right.
+
+    ; Scope out our Dest and Further locations
+    ; Y locations all same
+    ld a, [_OAMRAM]
+    ld [wDestY], a
+    ld [wFurtherY], a
+    ; X in a row
+    ld a, [_OAMRAM+1]
     add a, 8
+    ld [wDestX], a
+    add a, 8
+    ld [wFurtherX], a
+    sub a, 8  ; Leave Dest X in a
+
     ; If we've already hit the edge of the playfield, don't move.
     cp a, 160
     jp z, Main
 
-
-    ; If we hit a wall, don't move.
-    ; Remember to offset the OAM position!
-    ; (8, 16) in OAM coordinates is (0, 0) on the screen.
-    ld d, a ; Save dest position
-    ld a, [_OAMRAM]
-    sub a, 16
+    ; If dest is a wall, don't move.
+    ld a, [wDestY]
     ld c, a
-    ld a, [_OAMRAM + 1]
-    sub a, 8 - 8
+    ld a, [wDestX]
     ld b, a
-    call GetTileByPixel ; Returns tile address in hl
+    call GetTileByOam ; Returns tile address in hl
     ld a, [hl]
     call IsWallTile
     jp z, Main
 
+IsCrateRight:
+    ; Is there a crate?
+    ; b: dest x oam
+    ; c: dest y oam
+    ; hl: coordinate to modify
+    ld a, [wDestY]
+    ld c, a
+    ld a, [wDestX]
+    ld b, a
+    ld e, 0  ; Crate number
+    call IsCrate0
+    jp z, CanCrateMoveRight
+    ld e, 1  ; Crate number
+    call IsCrate1
+    jp z, CanCrateMoveRight
+    ld e, 2  ; Crate number
+    call IsCrate2
+    jp z, CanCrateMoveRight
+  
+    ; No crate there.
+    jp MoveRight
+
+CanCrateMoveRight:
+    ; Remember which crate we're pushing.
+    ld a, e
+    ld [wPushingCrate], a
+    ; Can the crate move?
+    ; Check that Further isn't the edge, isn't a wall, and doesn't have a crate.
+    ; 
+    ; If we've already hit the edge of the playfield, don't move.
+    ld a, [wFurtherX]
+    cp a, 160
+    jp z, Main
+
+    ; If Further is a wall, bail.
+    ld a, [wFurtherY]
+    ld c, a
+    ld a, [wFurtherX]
+    ld b, a
+    call GetTileByOam ; Returns tile address in hl
+    ld a, [hl]
+    call IsWallTile
+    jp z, Main
+
+    ; Is there a crate?
+    ; b: dest x oam
+    ; c: dest y oam
+    ld a, [wFurtherY]
+    ld c, a
+    ld a, [wFurtherX]
+    ld b, a
+    call IsCrate0
+    jp z, Main
+    call IsCrate1
+    jp z, Main
+    call IsCrate2
+    jp z, Main
+    ; OK, so the crate can be pushed.  Do it.
+
+MoveCrateRight:
+    ; Yes: Move crate first.
+    call PushingCrateX ; Active addr in hl
+    ld a, [wFurtherX]
+    ld [hl], a  ; Actually move crate
+
+MoveRight:
     ; All clear, move.
-    ; TODO (mittonk): Crate collision.
-    ld a, d ; Recover dest
-    ld [_OAMRAM + 1], a
+    ld a, [wDestX]
+    ld [_OAMRAM+1], a
     jp Main
 
 
@@ -290,13 +435,10 @@ CanCrateMoveUp:
     ld c, a
     ld a, [wFurtherX]
     ld b, a
-    ld e, 0  ; Crate number
     call IsCrate0
     jp z, Main
-    ld e, 1  ; Crate number
     call IsCrate1
     jp z, Main
-    ld e, 2  ; Crate number
     call IsCrate2
     jp z, Main
     ; OK, so the crate can be pushed.  Do it.
@@ -399,13 +541,10 @@ CanCrateMoveDown:
     ld c, a
     ld a, [wFurtherX]
     ld b, a
-    ld e, 0  ; Crate number
     call IsCrate0
     jp z, Main
-    ld e, 1  ; Crate number
     call IsCrate1
     jp z, Main
-    ld e, 2  ; Crate number
     call IsCrate2
     jp z, Main
     ; OK, so the crate can be pushed.  Do it.
@@ -494,6 +633,28 @@ UpdateKeys:
   or a, $F0 ; A7-4 = 1; A3-0 = unpressed keys
 .knownret
   ret
+
+; Get the active X axis for the crate we're pushing.
+; @return hl: X axis storage for active crate
+PushingCrateX:
+    ld a, [wPushingCrate]
+    cp 0
+    jp z, PushingCrateX0
+    cp 1
+    jp z, PushingCrateX1
+    cp 2
+    jp z, PushingCrateX2
+    jp Main ; Shouldn't happen
+PushingCrateX0:
+    ld hl, _OAMRAM+4+1
+    ret
+PushingCrateX1:
+    ld hl, _OAMRAM+8+1
+    ret
+PushingCrateX2:
+    ld hl, _OAMRAM+12+1
+    ret
+
 
 ; Get the active Y axis for the crate we're pushing.
 ; @return hl: Y axis storage for active crate
