@@ -6,16 +6,19 @@ SECTION "Header", ROM0[$100]
 
     ds $150 - @, 0 ; Make room for the header
 EntryPoint:
-    ; Do not turn the LCD off outside of VBlank
-WaitVBlank:
+    ; Wait for VBlank
     ld a, [rLY]
-    cp SCRN_Y
-    jp c, WaitVBlank
+    cp a, 144
+    jr c, EntryPoint
+    ; Do not turn the LCD off outside of VBlank
 
-    ; Turn the LCD off
-    ld a, 0
+    ; Disable screen
+    xor a, a
     ld [rLCDC], a
 
+    ; Initilize Sprite Object Library.
+    call InitSprObjLib
+    
     ; Copy the tile data
     ld de, Tiles
     ld hl, $9000
@@ -34,58 +37,68 @@ WaitVBlank:
     ld bc, ObjectsEnd - Objects
     call Memcopy
 
-    ; Clear object storage
-    ld a, 0
+    ; Reset hardware OAM
+    xor a, a
     ld b, 160
     ld hl, _OAMRAM
-ClearOam:
+.resetOAM
     ld [hli], a
     dec b
-    jp nz, ClearOam
-
-    ; Init player object
-    ld hl, _OAMRAM
-    ld a, 112 + OAM_Y_OFS
-    ld [hli], a
-    ld a, 16 + OAM_X_OFS
-    ld [hli], a
-    ld a, 0 ; Player
-    ld [hli], a
-    ld [hli], a
-
-    ; Init crate object 1
-    ld hl, _OAMRAM + 4
-    ld a, 80 + OAM_Y_OFS
-    ld [hli], a
-    ld a, 32 + OAM_X_OFS
-    ld [hli], a
-    ld a, 4  ; Crate
-    ld [hli], a
-    ld a, 0
-    ld [hli], a
-
-    ; Init crate object 2
-    ld hl, _OAMRAM + 8 ; TODO (mittonk): Naming?
-    ld a, 96 + OAM_Y_OFS
-    ld [hli], a
-    ld a, 32 + OAM_X_OFS
-    ld [hli], a
-    ld a, 4  ; Crate
-    ld [hli], a
-    ld a, 0
-    ld [hli], a
-
-    ; Init crate object 3
-    ld hl, _OAMRAM + 12
-    ld a, 96 + OAM_Y_OFS
-    ld [hli], a
-    ld a, 48 + OAM_X_OFS
-    ld [hli], a
-    ld a, 4  ; Crate
-    ld [hli], a
-    ld a, 0
-    ld [hli], a
-
+    jr nz, .resetOAM
+  
+;    
+;     ; Clear object storage
+;     ld a, 0
+;     ld b, 160
+;     ld hl, _OAMRAM
+; ClearOam:
+;     ld [hli], a
+;     dec b
+;     jp nz, ClearOam
+; 
+;     ; Init player object
+;     ld hl, _OAMRAM
+;     ld a, 112 + OAM_Y_OFS
+;     ld [hli], a
+;     ld a, 16 + OAM_X_OFS
+;     ld [hli], a
+;     ld a, 0 ; Player
+;     ld [hli], a
+;     ld [hli], a
+; 
+;     ; Init crate object 1
+;     ld hl, _OAMRAM + 4
+;     ld a, 80 + OAM_Y_OFS
+;     ld [hli], a
+;     ld a, 32 + OAM_X_OFS
+;     ld [hli], a
+;     ld a, 4  ; Crate
+;     ld [hli], a
+;     ld a, 0
+;     ld [hli], a
+; 
+;     ; Init crate object 2
+;     ld hl, _OAMRAM + 8 ; TODO (mittonk): Naming?
+;     ld a, 96 + OAM_Y_OFS
+;     ld [hli], a
+;     ld a, 32 + OAM_X_OFS
+;     ld [hli], a
+;     ld a, 4  ; Crate
+;     ld [hli], a
+;     ld a, 0
+;     ld [hli], a
+; 
+;     ; Init crate object 3
+;     ld hl, _OAMRAM + 12
+;     ld a, 96 + OAM_Y_OFS
+;     ld [hli], a
+;     ld a, 48 + OAM_X_OFS
+;     ld [hli], a
+;     ld a, 4  ; Crate
+;     ld [hli], a
+;     ld a, 0
+;     ld [hli], a
+; 
     ; Turn the LCD on
     ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_OBJ16
     ld [rLCDC], a
@@ -108,9 +121,81 @@ ClearOam:
     ld [wFurtherY], a
     ld [wFurtherX], a
     ld [wPushingCrate], a
+    ld a, 16 + OAM_X_OFS
+    ld [wPlayerX], a
+    ld a, 112 + OAM_Y_OFS
+    ld [wPlayerY], a
 
 
 Main:
+    call ResetShadowOAM
+
+    ;ld bc, (112.0 >> 12) & $FFFF
+    ;ld de, (16.0 >> 12) & $FFFF
+      
+    ; ld a, [wMetaspritePosition]
+    ; ld e, a
+    ; ld a, [wMetaspritePosition + 1]
+    ; ld d, a
+
+    ; TODO Learn Q12.4
+;    ld bc, (112.0 >> 12) & $FFFF
+;
+;    srl b
+;    rr c
+;    srl b
+;    rr c
+;    srl b
+;    rr c
+;    srl b
+;    rr c
+;
+;    ld a, 112
+;    ld e, a
+;    ld a, 0
+;    ld d, a
+;
+;    sla e
+;    rl d
+;    sla e
+;    rl d
+;    sla e
+;    rl d
+;    sla e
+;    rl d
+;    xor a
+
+    ; Scale player X to Q12.4 format.
+    ld a, [wPlayerX]
+    ld e, a
+    ld a, 0
+    ld d, a
+    sla e
+    rl d
+    sla e
+    rl d
+    sla e
+    rl d
+    sla e
+    rl d
+
+    ; Scale player Y to Q12.4 format.
+    ld a, [wPlayerY]
+    ld c, a
+    ld a, 0
+    ld b, a
+    sla c
+    rl b
+    sla c
+    rl b
+    sla c
+    rl b
+    sla c
+    rl b
+
+    ld hl, PlayerMetasprite
+    call RenderMetasprite
+
     ; Wait until it's *not* VBlank
     ld a, [rLY]
     cp SCRN_Y
@@ -119,6 +204,10 @@ WaitVBlank2:
     ld a, [rLY]
     cp SCRN_Y
     jp c, WaitVBlank2
+
+    ; Push sprites to OAM
+    ld a, HIGH(wShadowOAM)
+    call hOAMDMA
 
     ; Game clock
     ld a, [wFrameCounter]
@@ -145,11 +234,11 @@ Left:
 
     ; Scope out our Dest and Further locations
     ; Y locations all same
-    ld a, [_OAMRAM]
+    ld a, [wPlayerY]
     ld [wDestY], a
     ld [wFurtherY], a
     ; X in a row
-    ld a, [_OAMRAM+1]
+    ld a, [wPlayerX]
     sub a, 16
     ld [wDestX], a
     sub a, 16
@@ -238,7 +327,7 @@ MoveCrateLeft:
 MoveLeft:
     ; All clear, move.
     ld a, [wDestX]
-    ld [_OAMRAM+1], a
+    ld [wPlayerX], a
     jp Main
 
 
@@ -252,11 +341,11 @@ Right:
 
     ; Scope out our Dest and Further locations
     ; Y locations all same
-    ld a, [_OAMRAM]
+    ld a, [wPlayerY]
     ld [wDestY], a
     ld [wFurtherY], a
     ; X in a row
-    ld a, [_OAMRAM+1]
+    ld a, [wPlayerX]
     add a, 16
     ld [wDestX], a
     add a, 16
@@ -345,7 +434,7 @@ MoveCrateRight:
 MoveRight:
     ; All clear, move.
     ld a, [wDestX]
-    ld [_OAMRAM+1], a
+    ld [wPlayerX], a
     jp Main
 
 
@@ -359,11 +448,11 @@ Up:
 
     ; Scope out our Dest and Further locations
     ; X locations all same
-    ld a, [_OAMRAM+1]
+    ld a, [wPlayerX]
     ld [wDestX], a
     ld [wFurtherX], a
     ; Y in a row
-    ld a, [_OAMRAM]
+    ld a, [wPlayerY]
     sub a, 16
     ld [wDestY], a
     sub a, 16
@@ -452,7 +541,7 @@ MoveCrateUp:
 MoveUp:
     ; All clear, move.
     ld a, [wDestY]
-    ld [_OAMRAM], a
+    ld [wPlayerY], a
     jp Main
 
 
@@ -465,11 +554,11 @@ Down:
     ; Move the player one square down.
     ; Scope out our Dest and Further locations
     ; X locations all same
-    ld a, [_OAMRAM+1]
+    ld a, [wPlayerX]
     ld [wDestX], a
     ld [wFurtherX], a
     ; Y in a row
-    ld a, [_OAMRAM]
+    ld a, [wPlayerY]
     add a, 16
     ld [wDestY], a
     add a, 16
@@ -558,7 +647,7 @@ MoveCrateDown:
 MoveDown:
     ; All clear, move.
     ld a, [wDestY]
-    ld [_OAMRAM], a
+    ld [wPlayerY], a
     jp Main
 
 
@@ -1007,6 +1096,11 @@ Objects:
 
 ObjectsEnd:
 
+PlayerMetasprite:
+    .metasprite1    db 0,0,0,0
+    .metasprite2    db 0,8,2,0
+    .metaspriteEnd  db 128
+
 SECTION "Counter", WRAM0
 wFrameCounter: db
 
@@ -1015,9 +1109,14 @@ wCurKeys: db
 wNewKeys: db
 
 SECTION "Game Variables", WRAM0
+wPlayerX: db
+wPlayerY: db
 wDestY: db
 wDestX: db
 wFurtherY: db
 wFurtherX: db
 wPushingCrate: db
 
+SECTION "Position Vars", WRAM0
+wMetaspriteX: dw
+wMetaspriteY: dw
