@@ -156,6 +156,12 @@ RenderMetasprite::
   rrc d
   rra
   ld c, a
+; KAM
+; Render a metasprite to OAM.
+; @param b: Y position
+; @param c: X position
+; @param hl: Pointer to current metasprite.
+RenderMetaspriteUnscaled::
   ; Load Shadow OAM pointer.
   ld d, HIGH(wShadowOAM)
   ldh a, [hOAMIndex]

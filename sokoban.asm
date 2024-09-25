@@ -46,25 +46,6 @@ EntryPoint:
     dec b
     jr nz, .resetOAM
   
-;    
-;     ; Clear object storage
-;     ld a, 0
-;     ld b, 160
-;     ld hl, _OAMRAM
-; ClearOam:
-;     ld [hli], a
-;     dec b
-;     jp nz, ClearOam
-; 
-;     ; Init player object
-;     ld hl, _OAMRAM
-;     ld a, 112 + OAM_Y_OFS
-;     ld [hli], a
-;     ld a, 16 + OAM_X_OFS
-;     ld [hli], a
-;     ld a, 0 ; Player
-;     ld [hli], a
-;     ld [hli], a
 ; 
 ;     ; Init crate object 1
 ;     ld hl, _OAMRAM + 4
@@ -121,80 +102,52 @@ EntryPoint:
     ld [wFurtherY], a
     ld [wFurtherX], a
     ld [wPushingCrate], a
+
+    ; Place Player
     ld a, 16 + OAM_X_OFS
     ld [wPlayerX], a
     ld a, 112 + OAM_Y_OFS
     ld [wPlayerY], a
+    ; Place Crates
 
 
 Main:
     call ResetShadowOAM
 
-    ;ld bc, (112.0 >> 12) & $FFFF
-    ;ld de, (16.0 >> 12) & $FFFF
-      
-    ; ld a, [wMetaspritePosition]
-    ; ld e, a
-    ; ld a, [wMetaspritePosition + 1]
-    ; ld d, a
-
-    ; TODO Learn Q12.4
-;    ld bc, (112.0 >> 12) & $FFFF
-;
-;    srl b
-;    rr c
-;    srl b
-;    rr c
-;    srl b
-;    rr c
-;    srl b
-;    rr c
-;
-;    ld a, 112
+;    ; Scale player X to Q12.4 format.
+;    ld a, [wPlayerX]
 ;    ld e, a
 ;    ld a, 0
 ;    ld d, a
+;    sla e
+;    rl d
+;    sla e
+;    rl d
+;    sla e
+;    rl d
+;    sla e
+;    rl d
 ;
-;    sla e
-;    rl d
-;    sla e
-;    rl d
-;    sla e
-;    rl d
-;    sla e
-;    rl d
-;    xor a
+;    ; Scale player Y to Q12.4 format.
+;    ld a, [wPlayerY]
+;    ld c, a
+;    ld a, 0
+;    ld b, a
+;    sla c
+;    rl b
+;    sla c
+;    rl b
+;    sla c
+;    rl b
+;    sla c
+;    rl b
 
-    ; Scale player X to Q12.4 format.
     ld a, [wPlayerX]
-    ld e, a
-    ld a, 0
-    ld d, a
-    sla e
-    rl d
-    sla e
-    rl d
-    sla e
-    rl d
-    sla e
-    rl d
-
-    ; Scale player Y to Q12.4 format.
-    ld a, [wPlayerY]
     ld c, a
-    ld a, 0
+    ld a, [wPlayerY]
     ld b, a
-    sla c
-    rl b
-    sla c
-    rl b
-    sla c
-    rl b
-    sla c
-    rl b
-
     ld hl, PlayerMetasprite
-    call RenderMetasprite
+    call RenderMetaspriteUnscaled
 
     ; Wait until it's *not* VBlank
     ld a, [rLY]
@@ -1099,6 +1052,11 @@ ObjectsEnd:
 PlayerMetasprite:
     .metasprite1    db 0,0,0,0
     .metasprite2    db 0,8,2,0
+    .metaspriteEnd  db 128
+
+CrateMetasprite:
+    .metasprite1    db 0,0,4,0
+    .metasprite2    db 0,8,6,0
     .metaspriteEnd  db 128
 
 SECTION "Counter", WRAM0
