@@ -6,16 +6,19 @@ SECTION "Header", ROM0[$100]
 
     ds $150 - @, 0 ; Make room for the header
 EntryPoint:
-    ; Do not turn the LCD off outside of VBlank
-WaitVBlank:
+    ; Wait for VBlank
     ld a, [rLY]
-    cp SCRN_Y
-    jp c, WaitVBlank
+    cp a, 144
+    jr c, EntryPoint
+    ; Do not turn the LCD off outside of VBlank
 
-    ; Turn the LCD off
-    ld a, 0
+    ; Disable screen
+    xor a, a
     ld [rLCDC], a
 
+    ; Initilize Sprite Object Library.
+    call InitSprObjLib
+    
     ; Copy the tile data
     ld de, Tiles
     ld hl, $9000
@@ -34,60 +37,17 @@ WaitVBlank:
     ld bc, ObjectsEnd - Objects
     call Memcopy
 
-    ; Clear object storage
-    ld a, 0
+    ; Reset hardware OAM
+    xor a, a
     ld b, 160
     ld hl, _OAMRAM
-ClearOam:
+.resetOAM
     ld [hli], a
     dec b
-    jp nz, ClearOam
-
-    ; Init player object
-    ld hl, _OAMRAM
-    ld a, 96 + OAM_Y_OFS
-    ld [hli], a
-    ld a, 48 + OAM_X_OFS
-    ld [hli], a
-    ld a, 0 ; Player
-    ld [hli], a
-    ld [hli], a
-
-    ; Init crate object 1
-    ld hl, _OAMRAM + 4
-    ld a, 80 + OAM_Y_OFS
-    ld [hli], a
-    ld a, 56 + OAM_X_OFS
-    ld [hli], a
-    ld a, 1  ; Crate
-    ld [hli], a
-    ld a, 0
-    ld [hli], a
-
-    ; Init crate object 2
-    ld hl, _OAMRAM + 8 ; TODO (mittonk): Naming?
-    ld a, 88 + OAM_Y_OFS
-    ld [hli], a
-    ld a, 56 + OAM_X_OFS
-    ld [hli], a
-    ld a, 1  ; Crate
-    ld [hli], a
-    ld a, 0
-    ld [hli], a
-
-    ; Init crate object 3
-    ld hl, _OAMRAM + 12
-    ld a, 88 + OAM_Y_OFS
-    ld [hli], a
-    ld a, 64 + OAM_X_OFS
-    ld [hli], a
-    ld a, 1  ; Crate
-    ld [hli], a
-    ld a, 0
-    ld [hli], a
-
+    jr nz, .resetOAM
+  
     ; Turn the LCD on
-    ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON
+    ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_OBJ16
     ld [rLCDC], a
 
     ; During the first (blank) frame, initialize display registers
@@ -109,8 +69,62 @@ ClearOam:
     ld [wFurtherX], a
     ld [wPushingCrate], a
 
+    ; Place Player
+    ld a, 112 + OAM_Y_OFS
+    ld [wPlayerY], a
+    ld a, 16 + OAM_X_OFS
+    ld [wPlayerX], a
+
+    ; Place Crates
+    ld a, 80 + OAM_Y_OFS
+    ld [wCrate0Y], a
+    ld a, 32 + OAM_X_OFS
+    ld [wCrate0X], a
+
+    ld a, 96 + OAM_Y_OFS
+    ld [wCrate1Y], a
+    ld a, 32 + OAM_X_OFS
+    ld [wCrate1X], a
+
+    ld a, 96 + OAM_Y_OFS
+    ld [wCrate2Y], a
+    ld a, 48 + OAM_X_OFS
+    ld [wCrate2X], a
+
 
 Main:
+    call ResetShadowOAM
+
+    ; Blit player
+    ld a, [wPlayerY]
+    ld b, a
+    ld a, [wPlayerX]
+    ld c, a
+    ld hl, PlayerMetasprite
+    call RenderMetaspriteUnscaled
+
+    ; Blit crates
+    ld a, [wCrate0Y]
+    ld b, a
+    ld a, [wCrate0X]
+    ld c, a
+    ld hl, CrateMetasprite
+    call RenderMetaspriteUnscaled
+
+    ld a, [wCrate1Y]
+    ld b, a
+    ld a, [wCrate1X]
+    ld c, a
+    ld hl, CrateMetasprite
+    call RenderMetaspriteUnscaled
+
+    ld a, [wCrate2Y]
+    ld b, a
+    ld a, [wCrate2X]
+    ld c, a
+    ld hl, CrateMetasprite
+    call RenderMetaspriteUnscaled
+
     ; Wait until it's *not* VBlank
     ld a, [rLY]
     cp SCRN_Y
@@ -119,6 +133,10 @@ WaitVBlank2:
     ld a, [rLY]
     cp SCRN_Y
     jp c, WaitVBlank2
+
+    ; Push sprites to OAM
+    ld a, HIGH(wShadowOAM)
+    call hOAMDMA
 
     ; Game clock
     ld a, [wFrameCounter]
@@ -145,16 +163,16 @@ Left:
 
     ; Scope out our Dest and Further locations
     ; Y locations all same
-    ld a, [_OAMRAM]
+    ld a, [wPlayerY]
     ld [wDestY], a
     ld [wFurtherY], a
     ; X in a row
-    ld a, [_OAMRAM+1]
-    sub a, 8
+    ld a, [wPlayerX]
+    sub a, 16
     ld [wDestX], a
-    sub a, 8
+    sub a, 16
     ld [wFurtherX], a
-    add a, 8  ; Leave Dest X in a
+    add a, 16  ; Leave Dest X in a
 
     ; If we've already hit the edge of the playfield, don't move.
     cp a, OAM_X_OFS
@@ -238,7 +256,7 @@ MoveCrateLeft:
 MoveLeft:
     ; All clear, move.
     ld a, [wDestX]
-    ld [_OAMRAM+1], a
+    ld [wPlayerX], a
     jp Main
 
 
@@ -252,16 +270,16 @@ Right:
 
     ; Scope out our Dest and Further locations
     ; Y locations all same
-    ld a, [_OAMRAM]
+    ld a, [wPlayerY]
     ld [wDestY], a
     ld [wFurtherY], a
     ; X in a row
-    ld a, [_OAMRAM+1]
-    add a, 8
+    ld a, [wPlayerX]
+    add a, 16
     ld [wDestX], a
-    add a, 8
+    add a, 16
     ld [wFurtherX], a
-    sub a, 8  ; Leave Dest X in a
+    sub a, 16  ; Leave Dest X in a
 
     ; If we've already hit the edge of the playfield, don't move.
     cp a, SCRN_X
@@ -345,7 +363,7 @@ MoveCrateRight:
 MoveRight:
     ; All clear, move.
     ld a, [wDestX]
-    ld [_OAMRAM+1], a
+    ld [wPlayerX], a
     jp Main
 
 
@@ -359,16 +377,16 @@ Up:
 
     ; Scope out our Dest and Further locations
     ; X locations all same
-    ld a, [_OAMRAM+1]
+    ld a, [wPlayerX]
     ld [wDestX], a
     ld [wFurtherX], a
     ; Y in a row
-    ld a, [_OAMRAM]
-    sub a, 8
+    ld a, [wPlayerY]
+    sub a, 16
     ld [wDestY], a
-    sub a, 8
+    sub a, 16
     ld [wFurtherY], a
-    add a, 8  ; Leave Dest Y in a
+    add a, 16  ; Leave Dest Y in a
 
     ; If we've already hit the edge of the playfield, don't move.
     cp a, OAM_Y_OFS
@@ -452,7 +470,7 @@ MoveCrateUp:
 MoveUp:
     ; All clear, move.
     ld a, [wDestY]
-    ld [_OAMRAM], a
+    ld [wPlayerY], a
     jp Main
 
 
@@ -465,16 +483,16 @@ Down:
     ; Move the player one square down.
     ; Scope out our Dest and Further locations
     ; X locations all same
-    ld a, [_OAMRAM+1]
+    ld a, [wPlayerX]
     ld [wDestX], a
     ld [wFurtherX], a
     ; Y in a row
-    ld a, [_OAMRAM]
-    add a, 8
+    ld a, [wPlayerY]
+    add a, 16
     ld [wDestY], a
-    add a, 8
+    add a, 16
     ld [wFurtherY], a
-    sub a, 8  ; Leave Dest Y in a
+    sub a, 16  ; Leave Dest Y in a
 
     ; If we've already hit the edge of the playfield, don't move.
     cp a, 152
@@ -558,7 +576,7 @@ MoveCrateDown:
 MoveDown:
     ; All clear, move.
     ld a, [wDestY]
-    ld [_OAMRAM], a
+    ld [wPlayerY], a
     jp Main
 
 
@@ -568,10 +586,10 @@ IsCrate0:
     ; Is there a crate?
     ; b: dest x oam
     ; c: dest y oam
-    ld a, [_OAMRAM+4]
+    ld a, [wCrate0Y]
     cp a, c
     ret nz  ; Y doesn't match, bail.
-    ld a, [_OAMRAM+4+1]
+    ld a, [wCrate0X]
     cp a, b
     ret  ; Z=true means Y, X both match.
 
@@ -579,10 +597,10 @@ IsCrate1:
     ; Is there a crate?
     ; b: dest x oam
     ; c: dest y oam
-    ld a, [_OAMRAM+8]
+    ld a, [wCrate1Y]
     cp a, c
     ret nz  ; Y doesn't match, bail.
-    ld a, [_OAMRAM+8+1]
+    ld a, [wCrate1X]
     cp a, b
     ret  ; Z=true means Y, X both match.
 
@@ -590,10 +608,10 @@ IsCrate2:
     ; Is there a crate?
     ; b: dest x oam
     ; c: dest y oam
-    ld a, [_OAMRAM+12]
+    ld a, [wCrate2Y]
     cp a, c
     ret nz  ; Y doesn't match, bail.
-    ld a, [_OAMRAM+12+1]
+    ld a, [wCrate2X]
     cp a, b
     ret  ; Z=true means Y, X both match.
 
@@ -646,13 +664,13 @@ PushingCrateX:
     jp z, PushingCrateX2
     jp Main ; Shouldn't happen
 PushingCrateX0:
-    ld hl, _OAMRAM+4+1
+    ld hl, wCrate0X
     ret
 PushingCrateX1:
-    ld hl, _OAMRAM+8+1
+    ld hl, wCrate1X
     ret
 PushingCrateX2:
-    ld hl, _OAMRAM+12+1
+    ld hl, wCrate2X
     ret
 
 
@@ -668,13 +686,13 @@ PushingCrateY:
     jp z, PushingCrateY2
     jp Main ; Shouldn't happen
 PushingCrateY0:
-    ld hl, _OAMRAM+4
+    ld hl, wCrate0Y
     ret
 PushingCrateY1:
-    ld hl, _OAMRAM+8
+    ld hl, wCrate1Y
     ret
 PushingCrateY2:
-    ld hl, _OAMRAM+12
+    ld hl, wCrate2Y
     ret
 
 
@@ -731,7 +749,7 @@ GetTileByPixel:
 ; @param a: tile ID
 ; @return z: set if a is a wall.
 IsWallTile:
-    cp a, $02
+    cp a, $08  ; Top-left tile of a wall
     ret
 
 ; Copy bytes from one area to another.
@@ -749,7 +767,7 @@ Memcopy:
     ret
 
 Tiles:
-	; 00 Outside
+	; 00 Outside A
 	dw `33333333
 	dw `33333333
 	dw `33333333
@@ -759,7 +777,35 @@ Tiles:
 	dw `33333333
 	dw `33333333
 
-	; 01 Floor
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+
+	; 02 Outside B
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+	dw `33333333
+
+	; 04 Floor A
 	dw `00000000
 	dw `00000000
 	dw `00000000
@@ -769,9 +815,37 @@ Tiles:
 	dw `00000000
 	dw `00000000
 
-	; 02 Wall
-	dw `12111111
-	dw `11111121
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+
+	; 06 Floor B
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+
+	; 08 Wall A
+	dw `33111111
+	dw `31111121
 	dw `11121111
 	dw `11111111
 	dw `11211111
@@ -779,145 +853,187 @@ Tiles:
 	dw `21111111
 	dw `11111111
 
-	; 03 Target
-	dw `00000000
-	dw `00000000
-	dw `00022000
-	dw `00222200
-	dw `00222200
-	dw `00022000
-	dw `00000000
-	dw `00000000
-
-	; 04 Border, left
-	dw `33322211
-	dw `33322211
-	dw `33322211
-	dw `33322211
-	dw `33322211
-	dw `33322211
-	dw `33322211
-	dw `33322211
-
-	; 05 Border, top
-	dw `33333333
-	dw `33333333
-	dw `33333333
-	dw `22222222
-	dw `22222222
-	dw `22222222
+	dw `12111111
+	dw `11111121
+	dw `11121111
 	dw `11111111
+	dw `11211111
+	dw `11111211
+	dw `31111111
+	dw `33111111
+
+	; 0a Wall B
+	dw `12111133
+	dw `11111123
+	dw `11121111
+	dw `11111111
+	dw `11211111
+	dw `11111211
+	dw `21111111
 	dw `11111111
 
-	; 06 Border, bottom
+	dw `12111111
+	dw `11111121
+	dw `11121111
 	dw `11111111
-	dw `11111111
-	dw `22222222
-	dw `22222222
-	dw `22222222
-	dw `33333333
-	dw `33333333
-	dw `33333333
+	dw `11211111
+	dw `11111211
+	dw `21111113
+	dw `11111133
 
-	; 07 Border, right
-	dw `11222333
-	dw `11222333
-	dw `11222333
-	dw `11222333
-	dw `11222333
-	dw `11222333
-	dw `11222333
-	dw `11222333
+	; 0c Target A
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000022
+	dw `00000222
+	dw `00002222
+	dw `00002222
 
-	; 08 Border, top-left
-	dw `33333333
-	dw `33333333
-	dw `33333333
-	dw `33333222
-	dw `33332222
-	dw `33322222
-	dw `33322221
-	dw `33322211
+	dw `00002222
+	dw `00002222
+	dw `00000222
+	dw `00000022
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
 
-	; 09 Border, top-right
-	dw `33333333
-	dw `33333333
-	dw `33333333
-	dw `22233333
-	dw `22223333
-	dw `22222333
-	dw `12222333
-	dw `11222333
+	; 0e Target B
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `22000000
+	dw `22200000
+	dw `22220000
+	dw `22220000
 
-	; 0a Border, bottom-left
-	dw `33322211
-	dw `33322221
-	dw `33322222
-	dw `33332222
-	dw `33333222
-	dw `33333333
-	dw `33333333
-	dw `33333333
-
-	; 0b Border, bottom-right
-	dw `11222333
-	dw `12222333
-	dw `22222333
-	dw `22223333
-	dw `22233333
-	dw `33333333
-	dw `33333333
-	dw `33333333
+	dw `22220000
+	dw `22220000
+	dw `22200000
+	dw `22000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
+	dw `00000000
 
 TilesEnd:
 
 Tilemap:
-	db $08, $05, $05, $05, $05, $05, $05, $05, $05, $05, $05, $05, $05, $05, $05, $05, $05, $05, $05, $09, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $08, $0a, $04, $06, $04, $06, $04, $06, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $09, $0b, $05, $07, $05, $07, $05, $07, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $08, $0a, $04, $06, $04, $06, $04, $06, $08, $0a, $04, $06, $04, $06, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 
-	db $04, $00, $00, $00, $00, $00, $02, $02, $02, $02, $02, $00, $00, $00, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $00, $02, $01, $01, $01, $02, $02, $02, $02, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $00, $02, $01, $01, $01, $02, $01, $01, $02, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $00, $02, $02, $01, $01, $01, $01, $03, $02, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $02, $02, $02, $01, $02, $02, $02, $03, $02, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $09, $0b, $05, $07, $05, $07, $05, $07, $09, $0b, $05, $07, $05, $07, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $08, $0a, $08, $0a, $04, $06, $04, $06, $04, $06, $04, $06, $0c, $0e, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $09, $0b, $09, $0b, $05, $07, $05, $07, $05, $07, $05, $07, $0d, $0f, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $08, $0a, $08, $0a, $04, $06, $08, $0a, $08, $0a, $08, $0a, $0c, $0e, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $09, $0b, $09, $0b, $05, $07, $09, $0b, $09, $0b, $09, $0b, $0d, $0f, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 
-	db $04, $00, $00, $00, $00, $02, $01, $01, $01, $02, $00, $02, $03, $02, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $02, $01, $01, $01, $02, $00, $02, $02, $02, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $02, $01, $01, $01, $02, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $02, $02, $02, $02, $02, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $04, $06, $04, $06, $04, $06, $08, $0a, $00, $00, $08, $0a, $0c, $0e, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $05, $07, $05, $07, $05, $07, $09, $0b, $00, $00, $09, $0b, $0d, $0f, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $04, $06, $04, $06, $04, $06, $08, $0a, $00, $00, $08, $0a, $08, $0a, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $05, $07, $05, $07, $05, $07, $09, $0b, $00, $00, $09, $0b, $09, $0b, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $04, $06, $04, $06, $04, $06, $08, $0a, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 
-	db $04, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $04, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, 0,0,0,0,0,0,0,0,0,0,0,0
-	db $0a, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $06, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $05, $07, $05, $07, $05, $07, $09, $0b, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 
 TilemapEnd:
 
 Objects:
-    ; 8000 Player
-    dw `02000020
-    dw `02122120
-    dw `02311320
-    dw `00211200
-    dw `00122100
-    dw `00211200
-    dw `02111120
-    dw `20202022
+    ; 00 Player A
+    dw `02200000
+    dw `02120000
+    dw `02112222
+    dw `02221122
+    dw `02223331
+    dw `00221311
+    dw `00022111
+    dw `00002212
 
-    ; 8008 Crate
+    dw `00000022
+    dw `00000112
+    dw `00002211
+    dw `00022111
+    dw `00221111
+    dw `02221111
+    dw `22022202
+    dw `20002000
+
+    ; 02 Player B
+    dw `00000220
+    dw `00002120
+    dw `22221120
+    dw `22112220
+    dw `13332220
+    dw `11312200
+    dw `11122000
+    dw `21220000
+
+    dw `22000000
+    dw `21100000
+    dw `11220000
+    dw `11122000
+    dw `11112200
+    dw `11112220
+    dw `22022222
+    dw `20002002
+
+    ; 04 Crate A
     dw `33333333
-    dw `33222233
-    dw `32322323
-    dw `32233223
-    dw `32233223
-    dw `32322323
-    dw `33222233
+    dw `33222222
+    dw `32333333
+    dw `32332222
+    dw `32323222
+    dw `32322322
+    dw `32322232
+    dw `32322223
+
+    dw `32322223
+    dw `32322232
+    dw `32322322
+    dw `32323222
+    dw `32332222
+    dw `32333333
+    dw `33222222
+    dw `33333333
+
+    ; 06 Crate B
+    dw `33333333
+    dw `22222233
+    dw `33333323
+    dw `22223323
+    dw `22232323
+    dw `22322323
+    dw `23222323
+    dw `32222323
+
+    dw `32222323
+    dw `23222323
+    dw `22322323
+    dw `22232323
+    dw `22223323
+    dw `33333323
+    dw `22222233
     dw `33333333
 
 ObjectsEnd:
+
+PlayerMetasprite:
+    .metasprite1    db 0,0,0,0
+    .metasprite2    db 0,8,2,0
+    .metaspriteEnd  db 128
+
+CrateMetasprite:
+    .metasprite1    db 0,0,4,0
+    .metasprite2    db 0,8,6,0
+    .metaspriteEnd  db 128
 
 SECTION "Counter", WRAM0
 wFrameCounter: db
@@ -927,9 +1043,16 @@ wCurKeys: db
 wNewKeys: db
 
 SECTION "Game Variables", WRAM0
+wPlayerY: db
+wPlayerX: db
+wCrate0Y: db
+wCrate0X: db
+wCrate1Y: db
+wCrate1X: db
+wCrate2Y: db
+wCrate2X: db
 wDestY: db
 wDestX: db
 wFurtherY: db
 wFurtherX: db
 wPushingCrate: db
-
