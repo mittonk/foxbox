@@ -46,40 +46,6 @@ EntryPoint:
     dec b
     jr nz, .resetOAM
   
-; 
-;     ; Init crate object 1
-;     ld hl, _OAMRAM + 4
-;     ld a, 80 + OAM_Y_OFS
-;     ld [hli], a
-;     ld a, 32 + OAM_X_OFS
-;     ld [hli], a
-;     ld a, 4  ; Crate
-;     ld [hli], a
-;     ld a, 0
-;     ld [hli], a
-; 
-;     ; Init crate object 2
-;     ld hl, _OAMRAM + 8 ; TODO (mittonk): Naming?
-;     ld a, 96 + OAM_Y_OFS
-;     ld [hli], a
-;     ld a, 32 + OAM_X_OFS
-;     ld [hli], a
-;     ld a, 4  ; Crate
-;     ld [hli], a
-;     ld a, 0
-;     ld [hli], a
-; 
-;     ; Init crate object 3
-;     ld hl, _OAMRAM + 12
-;     ld a, 96 + OAM_Y_OFS
-;     ld [hli], a
-;     ld a, 48 + OAM_X_OFS
-;     ld [hli], a
-;     ld a, 4  ; Crate
-;     ld [hli], a
-;     ld a, 0
-;     ld [hli], a
-; 
     ; Turn the LCD on
     ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_OBJ16
     ld [rLCDC], a
@@ -104,49 +70,57 @@ EntryPoint:
     ld [wPushingCrate], a
 
     ; Place Player
-    ld a, 16 + OAM_X_OFS
-    ld [wPlayerX], a
     ld a, 112 + OAM_Y_OFS
     ld [wPlayerY], a
+    ld a, 16 + OAM_X_OFS
+    ld [wPlayerX], a
+
     ; Place Crates
+    ld a, 80 + OAM_Y_OFS
+    ld [wCrate0Y], a
+    ld a, 32 + OAM_X_OFS
+    ld [wCrate0X], a
+
+    ld a, 96 + OAM_Y_OFS
+    ld [wCrate1Y], a
+    ld a, 32 + OAM_X_OFS
+    ld [wCrate1X], a
+
+    ld a, 96 + OAM_Y_OFS
+    ld [wCrate2Y], a
+    ld a, 48 + OAM_X_OFS
+    ld [wCrate2X], a
 
 
 Main:
     call ResetShadowOAM
 
-;    ; Scale player X to Q12.4 format.
-;    ld a, [wPlayerX]
-;    ld e, a
-;    ld a, 0
-;    ld d, a
-;    sla e
-;    rl d
-;    sla e
-;    rl d
-;    sla e
-;    rl d
-;    sla e
-;    rl d
-;
-;    ; Scale player Y to Q12.4 format.
-;    ld a, [wPlayerY]
-;    ld c, a
-;    ld a, 0
-;    ld b, a
-;    sla c
-;    rl b
-;    sla c
-;    rl b
-;    sla c
-;    rl b
-;    sla c
-;    rl b
-
-    ld a, [wPlayerX]
-    ld c, a
     ld a, [wPlayerY]
     ld b, a
+    ld a, [wPlayerX]
+    ld c, a
     ld hl, PlayerMetasprite
+    call RenderMetaspriteUnscaled
+
+    ld a, [wCrate0Y]
+    ld b, a
+    ld a, [wCrate0X]
+    ld c, a
+    ld hl, CrateMetasprite
+    call RenderMetaspriteUnscaled
+
+    ld a, [wCrate1Y]
+    ld b, a
+    ld a, [wCrate1X]
+    ld c, a
+    ld hl, CrateMetasprite
+    call RenderMetaspriteUnscaled
+
+    ld a, [wCrate2Y]
+    ld b, a
+    ld a, [wCrate2X]
+    ld c, a
+    ld hl, CrateMetasprite
     call RenderMetaspriteUnscaled
 
     ; Wait until it's *not* VBlank
@@ -610,10 +584,10 @@ IsCrate0:
     ; Is there a crate?
     ; b: dest x oam
     ; c: dest y oam
-    ld a, [_OAMRAM+4]
+    ld a, [wCrate0Y]
     cp a, c
     ret nz  ; Y doesn't match, bail.
-    ld a, [_OAMRAM+4+1]
+    ld a, [wCrate0X]
     cp a, b
     ret  ; Z=true means Y, X both match.
 
@@ -621,10 +595,10 @@ IsCrate1:
     ; Is there a crate?
     ; b: dest x oam
     ; c: dest y oam
-    ld a, [_OAMRAM+8]
+    ld a, [wCrate1Y]
     cp a, c
     ret nz  ; Y doesn't match, bail.
-    ld a, [_OAMRAM+8+1]
+    ld a, [wCrate1X]
     cp a, b
     ret  ; Z=true means Y, X both match.
 
@@ -632,10 +606,10 @@ IsCrate2:
     ; Is there a crate?
     ; b: dest x oam
     ; c: dest y oam
-    ld a, [_OAMRAM+12]
+    ld a, [wCrate2Y]
     cp a, c
     ret nz  ; Y doesn't match, bail.
-    ld a, [_OAMRAM+12+1]
+    ld a, [wCrate2X]
     cp a, b
     ret  ; Z=true means Y, X both match.
 
@@ -688,13 +662,13 @@ PushingCrateX:
     jp z, PushingCrateX2
     jp Main ; Shouldn't happen
 PushingCrateX0:
-    ld hl, _OAMRAM+4+1
+    ld hl, wCrate0X
     ret
 PushingCrateX1:
-    ld hl, _OAMRAM+8+1
+    ld hl, wCrate1X
     ret
 PushingCrateX2:
-    ld hl, _OAMRAM+12+1
+    ld hl, wCrate2X
     ret
 
 
@@ -710,13 +684,13 @@ PushingCrateY:
     jp z, PushingCrateY2
     jp Main ; Shouldn't happen
 PushingCrateY0:
-    ld hl, _OAMRAM+4
+    ld hl, wCrate0Y
     ret
 PushingCrateY1:
-    ld hl, _OAMRAM+8
+    ld hl, wCrate1Y
     ret
 PushingCrateY2:
-    ld hl, _OAMRAM+12
+    ld hl, wCrate2Y
     ret
 
 
@@ -773,7 +747,7 @@ GetTileByPixel:
 ; @param a: tile ID
 ; @return z: set if a is a wall.
 IsWallTile:
-    cp a, $08
+    cp a, $08  ; Top-left tile of a wall
     ret
 
 ; Copy bytes from one area to another.
@@ -1067,14 +1041,16 @@ wCurKeys: db
 wNewKeys: db
 
 SECTION "Game Variables", WRAM0
-wPlayerX: db
 wPlayerY: db
+wPlayerX: db
+wCrate0Y: db
+wCrate0X: db
+wCrate1Y: db
+wCrate1X: db
+wCrate2Y: db
+wCrate2X: db
 wDestY: db
 wDestX: db
 wFurtherY: db
 wFurtherX: db
 wPushingCrate: db
-
-SECTION "Position Vars", WRAM0
-wMetaspriteX: dw
-wMetaspriteY: dw
