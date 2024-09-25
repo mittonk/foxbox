@@ -95,6 +95,7 @@ EntryPoint:
 Main:
     call ResetShadowOAM
 
+    ; Blit player
     ld a, [wPlayerY]
     ld b, a
     ld a, [wPlayerX]
@@ -102,6 +103,7 @@ Main:
     ld hl, PlayerMetasprite
     call RenderMetaspriteUnscaled
 
+    ; Blit crates
     ld a, [wCrate0Y]
     ld b, a
     ld a, [wCrate0X]
@@ -953,9 +955,9 @@ Objects:
     dw `02223331
     dw `00221311
     dw `00022111
-    dw `00002211
+    dw `00002212
 
-    dw `00001122
+    dw `00000022
     dw `00000112
     dw `00002211
     dw `00022111
@@ -972,12 +974,12 @@ Objects:
     dw `13332220
     dw `11312200
     dw `11122000
-    dw `11220000
+    dw `21220000
 
-    dw `22110000
+    dw `22000000
     dw `21100000
     dw `11220000
-    dw `11222000
+    dw `11122000
     dw `11112200
     dw `11112220
     dw `22022222
