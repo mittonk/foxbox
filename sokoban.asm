@@ -1,10 +1,18 @@
 INCLUDE "hardware.inc"
 
+; Player direction enum
+def SOUTH equ 0
+def EAST equ 1
+def NORTH equ 2
+def WEST equ 3
+
 SECTION "Header", ROM0[$100]
 
     jp EntryPoint
 
     ds $150 - @, 0 ; Make room for the header
+
+SECTION "Code", ROM0
 EntryPoint:
     ; Wait for VBlank
     ld a, [rLY]
@@ -68,6 +76,7 @@ EntryPoint:
     ld [wFurtherY], a
     ld [wFurtherX], a
     ld [wPushingCrate], a
+    ld [wPlayerDir], a
 
     ; Place Player
     ld a, 112 + OAM_Y_OFS
@@ -92,15 +101,40 @@ EntryPoint:
     ld [wCrate2X], a
 
 
-Main:
+; Main game loop.
+Main::
     call ResetShadowOAM
 
     ; Blit player
+    ld a, [wPlayerDir]
+    cp a, 0
+    jp z, .south
+    dec a
+    jp z, .east
+    dec a
+    jp z, .north
+    dec a
+    jp .west
+
+
+.south:
+    ld hl, PlayerMetaspriteSouth
+    jp .playerPos
+.east:
+    ld hl, PlayerMetaspriteEast
+    jp .playerPos
+.north:
+    ld hl, PlayerMetaspriteNorth
+    jp .playerPos
+.west:
+    ld hl, PlayerMetaspriteWest
+    jp .playerPos
+
+.playerPos:
     ld a, [wPlayerY]
     ld b, a
     ld a, [wPlayerX]
     ld c, a
-    ld hl, PlayerMetaspriteSouth  ; TODO (mittonk): Direction
     call RenderMetaspriteUnscaled
 
     ; Blit crates
@@ -158,8 +192,12 @@ CheckLeft:
     ld a, [wCurKeys]
     and a, PADF_LEFT
     jp z, CheckRight
-Left:
+.left:
     ; Move the player one square left.
+
+    ; Face accordingly, even if we don't end up moving.
+    ld a, WEST
+    ld [wPlayerDir], a
 
     ; Scope out our Dest and Further locations
     ; Y locations all same
@@ -188,7 +226,7 @@ Left:
     call IsWallTile
     jp z, Main
 
-IsCrateLeft:
+.isCrateLeft:
     ; Is there a crate?
     ; b: dest x oam
     ; c: dest y oam
@@ -199,18 +237,18 @@ IsCrateLeft:
     ld b, a
     ld e, 0  ; Crate number
     call IsCrate0
-    jp z, CanCrateMoveLeft
+    jp z, .canCrateMoveLeft
     ld e, 1  ; Crate number
     call IsCrate1
-    jp z, CanCrateMoveLeft
+    jp z, .canCrateMoveLeft
     ld e, 2  ; Crate number
     call IsCrate2
-    jp z, CanCrateMoveLeft
+    jp z, .canCrateMoveLeft
 
     ; No crate there.
-    jp MoveLeft
+    jp .moveLeft
 
-CanCrateMoveLeft:
+.canCrateMoveLeft:
     ; Remember which crate we're pushing.
     ld a, e
     ld [wPushingCrate], a
@@ -247,13 +285,13 @@ CanCrateMoveLeft:
     jp z, Main
     ; OK, so the crate can be pushed.  Do it.
 
-MoveCrateLeft:
+.moveCrateLeft:
     ; Yes: Move crate first.
     call PushingCrateX ; Active addr in hl
     ld a, [wFurtherX]
     ld [hl], a  ; Actually move crate
 
-MoveLeft:
+.moveLeft:
     ; All clear, move.
     ld a, [wDestX]
     ld [wPlayerX], a
@@ -267,6 +305,10 @@ CheckRight:
     jp z, CheckUp
 Right:
     ; Move the player one square right.
+
+    ; Face accordingly, even if we don't end up moving.
+    ld a, EAST
+    ld [wPlayerDir], a
 
     ; Scope out our Dest and Further locations
     ; Y locations all same
@@ -375,6 +417,10 @@ CheckUp:
 Up:
     ; Move the player one square up.
 
+    ; Face accordingly, even if we don't end up moving.
+    ld a, NORTH
+    ld [wPlayerDir], a
+
     ; Scope out our Dest and Further locations
     ; X locations all same
     ld a, [wPlayerX]
@@ -481,6 +527,11 @@ CheckDown:
     jp z, Main
 Down:
     ; Move the player one square down.
+
+    ; Face accordingly, even if we don't end up moving.
+    ld a, SOUTH
+    ld [wPlayerDir], a
+
     ; Scope out our Dest and Further locations
     ; X locations all same
     ld a, [wPlayerX]
@@ -657,19 +708,19 @@ UpdateKeys:
 PushingCrateX:
     ld a, [wPushingCrate]
     cp 0
-    jp z, PushingCrateX0
+    jp z, .pushingCrateX0
     cp 1
-    jp z, PushingCrateX1
+    jp z, .pushingCrateX1
     cp 2
-    jp z, PushingCrateX2
+    jp z, .pushingCrateX2
     jp Main ; Shouldn't happen
-PushingCrateX0:
+.pushingCrateX0:
     ld hl, wCrate0X
     ret
-PushingCrateX1:
+.pushingCrateX1:
     ld hl, wCrate1X
     ret
-PushingCrateX2:
+.pushingCrateX2:
     ld hl, wCrate2X
     ret
 
@@ -679,19 +730,19 @@ PushingCrateX2:
 PushingCrateY:
     ld a, [wPushingCrate]
     cp 0
-    jp z, PushingCrateY0
+    jp z, .pushingCrateY0
     cp 1
-    jp z, PushingCrateY1
+    jp z, .pushingCrateY1
     cp 2
-    jp z, PushingCrateY2
+    jp z, .pushingCrateY2
     jp Main ; Shouldn't happen
-PushingCrateY0:
+.pushingCrateY0:
     ld hl, wCrate0Y
     ret
-PushingCrateY1:
+.pushingCrateY1:
     ld hl, wCrate1Y
     ret
-PushingCrateY2:
+.pushingCrateY2:
     ld hl, wCrate2Y
     ret
 
@@ -1174,6 +1225,7 @@ wNewKeys: db
 SECTION "Game Variables", WRAM0
 wPlayerY: db
 wPlayerX: db
+wPlayerDir: db
 wCrate0Y: db
 wCrate0X: db
 wCrate1Y: db
