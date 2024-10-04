@@ -12,7 +12,7 @@ SECTION "Header", ROM0[$100]
 
     ds $150 - @, 0 ; Make room for the header
 
-SECTION "Code", ROM0
+SECTION "Initialization", ROM0
 EntryPoint:
     ; Wait for VBlank
     ld a, [rLY]
@@ -100,6 +100,7 @@ EntryPoint:
     ld a, 48 + OAM_X_OFS
     ld [wCrate2X], a
 
+SECTION "Main Game Loop", ROM0
 
 ; Main game loop.
 Main::
@@ -159,6 +160,10 @@ Main::
     ld hl, CrateMetasprite
     call RenderMetaspriteUnscaled
 
+
+
+
+WaitVBlank:
     ; Wait until it's *not* VBlank
     ld a, [rLY]
     cp SCRN_Y
@@ -187,7 +192,7 @@ WaitVBlank2:
     ; Check for input.
     call UpdateKeys
 
-    ; First, check if the left button is pressed.
+; First, check if the left button is pressed.
 CheckLeft:
     ld a, [wCurKeys]
     and a, PADF_LEFT
@@ -666,6 +671,9 @@ IsCrate2:
     cp a, b
     ret  ; Z=true means Y, X both match.
 
+
+SECTION "UpdateKeys", ROM0
+
     ; https://gbdev.io/gb-asm-tutorial/part2/input.html
 UpdateKeys:
     ; Poll half the controller
@@ -703,6 +711,7 @@ UpdateKeys:
 .knownret
     ret
 
+SECTION "Utilities", ROM0
 ; Get the active X axis for the crate we're pushing.
 ; @return hl: X axis storage for active crate
 PushingCrateX:
@@ -817,6 +826,7 @@ Memcopy:
     jp nz, Memcopy
     ret
 
+SECTION "Tiles", ROM0
 Tiles:
 	; 00 Outside A
 	dw `33333333
@@ -972,6 +982,7 @@ Tiles:
 
 TilesEnd:
 
+SECTION "Tilemap", ROM0
 Tilemap:
 	db $00, $00, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 	db $00, $00, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
@@ -997,6 +1008,7 @@ Tilemap:
 
 TilemapEnd:
 
+SECTION "Objects", ROM0
 Objects:
     ; 00 Player South A
     dw `02200000
@@ -1038,44 +1050,7 @@ Objects:
 
 PlayerEastTileData: INCBIN "assets/player_east.2bpp"
 PlayerEastTileDataEnd:
-;    ; 04 Player East A
-;    dw `00220000
-;    dw `00222000
-;    dw `00222222
-;    dw `00222222
-;    dw `00222222
-;    dw `00222222
-;    dw `00022222
-;    dw `00002222
-;
-;    dw `00000022
-;    dw `00000222
-;    dw `00002222
-;    dw `00022222
-;    dw `00222222
-;    dw `02222222
-;    dw `22022222
-;    dw `20002220
-;
-;    ; 06 Pla222 East B
-;    dw `00000000
-;    dw `00000000
-;    dw `22000000
-;    dw `22220000
-;    dw `22222220
-;    dw `22222220
-;    dw `22222000
-;    dw `22200000
-;
-;    dw `22000000
-;    dw `21100000
-;    dw `21120000
-;    dw `21112000
-;    dw `22111200
-;    dw `22211120
-;    dw `22022222
-;    dw `20002002
-;
+
     ; 08 Player North A
     dw `02200000
     dw `02220000
