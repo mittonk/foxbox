@@ -100,7 +100,7 @@ Main:
     ld b, a
     ld a, [wPlayerX]
     ld c, a
-    ld hl, PlayerMetasprite
+    ld hl, PlayerMetaspriteSouth  ; TODO (mittonk): Direction
     call RenderMetaspriteUnscaled
 
     ; Blit crates
@@ -844,8 +844,8 @@ Tiles:
 	dw `00000000
 
 	; 08 Wall A
-	dw `33111111
-	dw `31111121
+	dw `11111111
+	dw `11111121
 	dw `11121111
 	dw `11111111
 	dw `11211111
@@ -859,12 +859,12 @@ Tiles:
 	dw `11111111
 	dw `11211111
 	dw `11111211
-	dw `31111111
-	dw `33111111
+	dw `12111111
+	dw `11111111
 
 	; 0a Wall B
-	dw `12111133
-	dw `11111123
+	dw `12111111
+	dw `11111121
 	dw `11121111
 	dw `11111111
 	dw `11211111
@@ -878,8 +878,8 @@ Tiles:
 	dw `11111111
 	dw `11211111
 	dw `11111211
-	dw `21111113
-	dw `11111133
+	dw `21111111
+	dw `11111111
 
 	; 0c Target A
 	dw `00000000
@@ -947,7 +947,7 @@ Tilemap:
 TilemapEnd:
 
 Objects:
-    ; 00 Player A
+    ; 00 Player South A
     dw `02200000
     dw `02120000
     dw `02112222
@@ -966,7 +966,7 @@ Objects:
     dw `22022202
     dw `20002000
 
-    ; 02 Player B
+    ; 02 Player South B
     dw `00000220
     dw `00002120
     dw `22221120
@@ -985,7 +985,121 @@ Objects:
     dw `22022222
     dw `20002002
 
-    ; 04 Crate A
+    ; 04 Player East A
+    dw `02200000
+    dw `02120000
+    dw `02112222
+    dw `02221122
+    dw `02223331
+    dw `00221311
+    dw `00022111
+    dw `00002212
+
+    dw `00000022
+    dw `00000112
+    dw `00002211
+    dw `00022111
+    dw `00221111
+    dw `02221111
+    dw `22022202
+    dw `20002000
+
+    ; 06 Player East B
+    dw `00000220
+    dw `00002120
+    dw `22221120
+    dw `22112220
+    dw `13332220
+    dw `11312200
+    dw `11122000
+    dw `21220000
+
+    dw `22000000
+    dw `21100000
+    dw `11220000
+    dw `11122000
+    dw `11112200
+    dw `11112220
+    dw `22022222
+    dw `20002002
+
+    ; 08 Player North A
+    dw `02200000
+    dw `02220000
+    dw `02222222
+    dw `02222222
+    dw `02222222
+    dw `00222222
+    dw `00022222
+    dw `00002222
+
+    dw `00000022
+    dw `00000222
+    dw `00002222
+    dw `00022222
+    dw `00222222
+    dw `02222222
+    dw `22022202
+    dw `20002000
+
+    ; 0a Player North B
+    dw `00000220
+    dw `00002220
+    dw `22222220
+    dw `22222220
+    dw `22222220
+    dw `22222200
+    dw `22222000
+    dw `22220000
+
+    dw `22000000
+    dw `22200000
+    dw `22220000
+    dw `22222000
+    dw `22222200
+    dw `22222220
+    dw `22022222
+    dw `20002002
+
+    ; 0c Player West A
+    dw `02200000
+    dw `02120000
+    dw `02112222
+    dw `02221122
+    dw `02223331
+    dw `00221311
+    dw `00022111
+    dw `00002212
+
+    dw `00000022
+    dw `00000112
+    dw `00002211
+    dw `00022111
+    dw `00221111
+    dw `02221111
+    dw `22022202
+    dw `20002000
+
+    ; 0e Player West B
+    dw `00000220
+    dw `00002120
+    dw `22221120
+    dw `22112220
+    dw `13332220
+    dw `11312200
+    dw `11122000
+    dw `21220000
+
+    dw `22000000
+    dw `21100000
+    dw `11220000
+    dw `11122000
+    dw `11112200
+    dw `11112220
+    dw `22022222
+    dw `20002002
+
+    ; 10 Crate A
     dw `33333333
     dw `33222222
     dw `32333333
@@ -1004,7 +1118,7 @@ Objects:
     dw `33222222
     dw `33333333
 
-    ; 06 Crate B
+    ; 12 Crate B
     dw `33333333
     dw `22222233
     dw `33333323
@@ -1025,14 +1139,29 @@ Objects:
 
 ObjectsEnd:
 
-PlayerMetasprite:
+PlayerMetaspriteSouth:
     .metasprite1    db 0,0,0,0
     .metasprite2    db 0,8,2,0
     .metaspriteEnd  db 128
 
-CrateMetasprite:
+PlayerMetaspriteEast:
     .metasprite1    db 0,0,4,0
     .metasprite2    db 0,8,6,0
+    .metaspriteEnd  db 128
+
+PlayerMetaspriteNorth:
+    .metasprite1    db 0,0,8,0
+    .metasprite2    db 0,8,$a,0
+    .metaspriteEnd  db 128
+
+PlayerMetaspriteWest:
+    .metasprite1    db 0,0,$c,0
+    .metasprite2    db 0,8,$e,0
+    .metaspriteEnd  db 128
+
+CrateMetasprite:
+    .metasprite1    db 0,0,$10,0
+    .metasprite2    db 0,8,$12,0
     .metaspriteEnd  db 128
 
 SECTION "Counter", WRAM0
