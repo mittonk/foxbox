@@ -12,7 +12,7 @@ SECTION "Header", ROM0[$100]
 
     ds $150 - @, 0 ; Make room for the header
 
-SECTION "Initialization", ROM0
+SECTION "Code", ROM0
 EntryPoint:
     ; Wait for VBlank
     ld a, [rLY]
@@ -100,7 +100,7 @@ EntryPoint:
     ld a, 48 + OAM_X_OFS
     ld [wCrate2X], a
 
-SECTION "Main Game Loop", ROM0
+;SECTION "Main", ROM0
 
 ; Main game loop.
 Main::
@@ -826,7 +826,7 @@ Memcopy:
     jp nz, Memcopy
     ret
 
-SECTION "Tiles", ROM0
+;SECTION "Tiles", ROM0
 Tiles:
 	; 00 Outside A
 	dw `33333333
@@ -982,7 +982,7 @@ Tiles:
 
 TilesEnd:
 
-SECTION "Tilemap", ROM0
+;SECTION "Tilemap", ROM0
 Tilemap:
 	db $00, $00, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 	db $00, $00, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
@@ -1008,7 +1008,7 @@ Tilemap:
 
 TilemapEnd:
 
-SECTION "Objects", ROM0
+;SECTION "Objects", ROM0
 Objects:
     ; 00 Player South A
     dw `02200000
