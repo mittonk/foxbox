@@ -73,7 +73,10 @@ InitSprObjLib::
   inc c
   dec b
   jr nz, .memcpy
-  xor a, a
+
+  ;xor a, a
+  ld a, 160  ; KAM Disable all 40 possible metasprites.
+
   ldh [hOAMIndex], a ; hOAMIndex must be reset before running ResetShadowOAM.
   ret
 
