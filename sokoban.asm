@@ -69,6 +69,7 @@ EntryPoint:
     ; Initialize global variables
     ld a, 0
     ld [wFrameCounter], a
+    ld [wAnimCounter], a
     ld [wCurKeys], a
     ld [wNewKeys], a
     ld [wDestY], a
@@ -118,17 +119,42 @@ Main::
     jp .west
 
 
+    ; TODO (mittonk): Fancy indexing, or a table in ROM, or similar?
 .south:
+    ld a, [wAnimCounter]
+    cp a, 0
+    jp nz, .south2
     ld hl, PlayerMetaspriteSouth
     jp .playerPos
+.south2:
+    ld hl, PlayerMetaspriteSouth2
+    jp .playerPos
 .east:
+    ld a, [wAnimCounter]
+    cp a, 0
+    jp nz, .east2
     ld hl, PlayerMetaspriteEast
     jp .playerPos
+.east2:
+    ld hl, PlayerMetaspriteEast2
+    jp .playerPos
 .north:
+    ld a, [wAnimCounter]
+    cp a, 0
+    jp nz, .north2
     ld hl, PlayerMetaspriteNorth
     jp .playerPos
+.north2:
+    ld hl, PlayerMetaspriteNorth2
+    jp .playerPos
 .west:
+    ld a, [wAnimCounter]
+    cp a, 0
+    jp nz, .west2
     ld hl, PlayerMetaspriteWest
+    jp .playerPos
+.west2:
+    ld hl, PlayerMetaspriteWest2
     jp .playerPos
 
 .playerPos:
@@ -188,6 +214,10 @@ WaitVBlank2:
     ld a, 0
     ld [wFrameCounter], a
 
+    ; Flip the animation counter
+    ld a, [wAnimCounter]
+    xor a, 1
+    ld [wAnimCounter], a
 
     ; Check for input.
     call UpdateKeys
@@ -1012,17 +1042,17 @@ TilemapEnd:
 Objects:
     ; 00, 02 Player South
 PlayerSouthTileData: INCBIN "assets/player_south.2bpp"
-PlayerSouthTileDataEnd:
 
     ; 04, 06 Player East
 PlayerEastTileData: INCBIN "assets/player_east.2bpp"
-PlayerEastTileDataEnd:
 
-    ; 08, 0a Player North
+    ; 08, 0a Player East2
+PlayerEast2TileData: INCBIN "assets/player_east2.2bpp"
+
+    ; 0c, 0e Player North
 PlayerNorthTileData: INCBIN "assets/player_north.2bpp"
-PlayerNorthTileDataEnd:
 
-    ; 0c Crate A
+    ; 10 Crate A
     dw `33333333
     dw `33222222
     dw `32333333
@@ -1041,7 +1071,7 @@ PlayerNorthTileDataEnd:
     dw `33222222
     dw `33333333
 
-    ; 0e Crate B
+    ; 12 Crate B
     dw `33333333
     dw `22222233
     dw `33333323
@@ -1067,14 +1097,29 @@ PlayerMetaspriteSouth:
     .metasprite2    db 0,8,2,0
     .metaspriteEnd  db 128
 
+PlayerMetaspriteSouth2:  ; Mirror horizontally
+    .metasprite1    db 0,0,2,OAMF_XFLIP
+    .metasprite2    db 0,8,0,OAMF_XFLIP
+    .metaspriteEnd  db 128
+
 PlayerMetaspriteEast:
     .metasprite1    db 0,0,4,0
     .metasprite2    db 0,8,6,0
     .metaspriteEnd  db 128
 
-PlayerMetaspriteNorth:
-    .metasprite1    db 0,0,8,0
+PlayerMetaspriteEast2:  ; Alternate set of tiles
+    .metasprite1    db 0,0,$8,0
     .metasprite2    db 0,8,$a,0
+    .metaspriteEnd  db 128
+
+PlayerMetaspriteNorth:
+    .metasprite1    db 0,0,$c,0
+    .metasprite2    db 0,8,$e,0
+    .metaspriteEnd  db 128
+
+PlayerMetaspriteNorth2:  ; Mirror horizontally
+    .metasprite1    db 0,0,$e,OAMF_XFLIP
+    .metasprite2    db 0,8,$c,OAMF_XFLIP
     .metaspriteEnd  db 128
 
 PlayerMetaspriteWest:  ; Reuse East tiles with some flipping and shuffling
@@ -1082,13 +1127,19 @@ PlayerMetaspriteWest:  ; Reuse East tiles with some flipping and shuffling
     .metasprite2    db 0,8,4,OAMF_XFLIP
     .metaspriteEnd  db 128
 
+PlayerMetaspriteWest2:  ; Reuse East2 tiles with some flipping and shuffling
+    .metasprite1    db 0,0,$a,OAMF_XFLIP
+    .metasprite2    db 0,8,$8,OAMF_XFLIP
+    .metaspriteEnd  db 128
+
 CrateMetasprite:
-    .metasprite1    db 0,0,$c,0
-    .metasprite2    db 0,8,$e,0
+    .metasprite1    db 0,0,$10,0
+    .metasprite2    db 0,8,$12,0
     .metaspriteEnd  db 128
 
 SECTION "Counter", WRAM0
 wFrameCounter: db
+wAnimCounter: db
 
 SECTION "Input Variables", WRAM0
 wCurKeys: db
