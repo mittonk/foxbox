@@ -1010,89 +1010,19 @@ TilemapEnd:
 
 ;SECTION "Objects", ROM0
 Objects:
-    ; 00 Player South A
-    dw `02200000
-    dw `02120000
-    dw `02112222
-    dw `02221122
-    dw `02223331
-    dw `00221311
-    dw `00022111
-    dw `00002212
+    ; 00, 02 Player South
+PlayerSouthTileData: INCBIN "assets/player_south.2bpp"
+PlayerSouthTileDataEnd:
 
-    dw `00000022
-    dw `00000112
-    dw `00002211
-    dw `00022111
-    dw `00221111
-    dw `02221111
-    dw `22022202
-    dw `20002000
-
-    ; 02 Player South B
-    dw `00000220
-    dw `00002120
-    dw `22221120
-    dw `22112220
-    dw `13332220
-    dw `11312200
-    dw `11122000
-    dw `21220000
-
-    dw `22000000
-    dw `21100000
-    dw `11220000
-    dw `11122000
-    dw `11112200
-    dw `11112220
-    dw `22022222
-    dw `20002002
-
+    ; 04, 06 Player East
 PlayerEastTileData: INCBIN "assets/player_east.2bpp"
 PlayerEastTileDataEnd:
 
-    ; 08 Player North A
-    dw `02200000
-    dw `02220000
-    dw `02222222
-    dw `02222222
-    dw `02222222
-    dw `00222222
-    dw `00022222
-    dw `00002222
+    ; 08, 0a Player North
+PlayerNorthTileData: INCBIN "assets/player_north.2bpp"
+PlayerNorthTileDataEnd:
 
-    dw `00000022
-    dw `00000222
-    dw `00002222
-    dw `00022222
-    dw `00222222
-    dw `02222222
-    dw `22022202
-    dw `20002000
-
-    ; 0a Player North B
-    dw `00000220
-    dw `00002220
-    dw `22222220
-    dw `22222220
-    dw `22222220
-    dw `22222200
-    dw `22222000
-    dw `22220000
-
-    dw `22000000
-    dw `22200000
-    dw `22220000
-    dw `22222000
-    dw `22222200
-    dw `22222220
-    dw `22022222
-    dw `20002002
-
-PlayerWestTileData: INCBIN "assets/player_west.2bpp"
-PlayerWestTileDataEnd:
-
-    ; 10 Crate A
+    ; 0c Crate A
     dw `33333333
     dw `33222222
     dw `32333333
@@ -1111,7 +1041,7 @@ PlayerWestTileDataEnd:
     dw `33222222
     dw `33333333
 
-    ; 12 Crate B
+    ; 0e Crate B
     dw `33333333
     dw `22222233
     dw `33333323
@@ -1147,14 +1077,14 @@ PlayerMetaspriteNorth:
     .metasprite2    db 0,8,$a,0
     .metaspriteEnd  db 128
 
-PlayerMetaspriteWest:
-    .metasprite1    db 0,0,$c,0
-    .metasprite2    db 0,8,$e,0
+PlayerMetaspriteWest:  ; Reuse East tiles with some flipping and shuffling
+    .metasprite1    db 0,0,6,OAMF_XFLIP
+    .metasprite2    db 0,8,4,OAMF_XFLIP
     .metaspriteEnd  db 128
 
 CrateMetasprite:
-    .metasprite1    db 0,0,$10,0
-    .metasprite2    db 0,8,$12,0
+    .metasprite1    db 0,0,$c,0
+    .metasprite2    db 0,8,$e,0
     .metaspriteEnd  db 128
 
 SECTION "Counter", WRAM0
