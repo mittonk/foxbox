@@ -3,16 +3,20 @@ ASSETS = assets/player_east.2bpp \
          assets/player_north.2bpp \
          assets/player_south.2bpp
 
-all: sokoban.gb
+all: foxbox.gb
 
-sokoban.gb: sokoban.o sprobjs_lib.o
-	rgblink -n sokoban.sym -o $@ $^
+foxbox.gb: foxbox.o sprobjs_lib.o
+	rgblink -n foxbox.sym -o $@ $^
 	rgbfix -v -p 0xFF $@
 
 %.o: %.asm
 	rgbasm -o $@ $<
 
-sokoban.o: $(ASSETS)
+foxbox.o: $(ASSETS)
 
 %.2bpp: %.png
 	rgbgfx -Z -o $@ $<
+
+clean:
+	rm -f *.gb *.o *.sym
+	rm -f assets/*.2bpp
