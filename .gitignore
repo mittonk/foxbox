@@ -2,3 +2,4 @@
 *.gb
 *.sym
 *.swp
+.DS_Store

@@ -1022,6 +1022,8 @@ Tiles:
 	dw `00000000
 	dw `00000000
 
+TitleTileData: INCBIN "assets/title.2bpp"
+
 TilesEnd:
 
 ;SECTION "Tilemap", ROM0
