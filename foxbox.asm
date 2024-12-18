@@ -35,14 +35,14 @@ EntryPoint:
 
     ; Copy the tilemap
     ; TODO (kmitton): FSM to handle title screen vs gameplay.
-    ld de, TilemapLevel0
+    ; ld de, TilemapLevel0
+    ; ld hl, $9800
+    ; ld bc, TilemapLevel0End - TilemapLevel0
+    ; call Memcopy
+    ld de, TilemapTitle
     ld hl, $9800
-    ld bc, TilemapLevel0End - TilemapLevel0
+    ld bc, TilemapTitleEnd - TilemapTitle
     call Memcopy
-    ;ld de, TilemapTitle
-    ;ld hl, $9800
-    ;ld bc, TilemapTitleEnd - TilemapTitle
-    ;call Memcopy
 
     ; Copy the player and crate tiles
     ld de, Objects
@@ -85,9 +85,16 @@ EntryPoint:
     ld [wPlayerDir], a
 
     ; Place Player
-    ld a, 112 + OAM_Y_OFS
+    ; Level 0
+    ; ld a, 112 + OAM_Y_OFS
+    ; ld [wPlayerY], a
+    ; ld a, 16 + OAM_X_OFS
+    ; ld [wPlayerX], a
+
+    ; Title screen
+    ld a, $50 + OAM_Y_OFS
     ld [wPlayerY], a
-    ld a, 16 + OAM_X_OFS
+    ld a, $50 + OAM_X_OFS
     ld [wPlayerX], a
 
     ; Place Crates
