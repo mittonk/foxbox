@@ -122,23 +122,24 @@ InitTitleState::
     ld [wPlayerX], a
 
     ; Place Crates
-    ld a, 80 + OAM_Y_OFS
+    ld a, $50 + OAM_Y_OFS
     ld [wCrate0Y], a
-    ld a, 32 + OAM_X_OFS
+    ld a, $30 + OAM_X_OFS
     ld [wCrate0X], a
 
-    ld a, 96 + OAM_Y_OFS
+    ld a, $50 + OAM_Y_OFS
     ld [wCrate1Y], a
-    ld a, 32 + OAM_X_OFS
+    ld a, $70 + OAM_X_OFS
     ld [wCrate1X], a
 
-    ld a, 96 + OAM_Y_OFS
+    ld a, $70 + OAM_Y_OFS
     ld [wCrate2Y], a
-    ld a, 48 + OAM_X_OFS
+    ld a, $50 + OAM_X_OFS
     ld [wCrate2X], a
 
     call ResetShadowOAM
     call BlitPlayer
+    call BlitCrates
 
     ; Push sprites to OAM
     ld a, HIGH(wShadowOAM)
@@ -152,21 +153,14 @@ InitTitleState::
 
 UpdateTitleState::
 
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ; Wait for A
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
     ; Save the passed value into the variable: mWaitKey
     ; The WaitForKeyFunction always checks against this variable
-    ld a, PADF_A
+    ld a, PADF_START
     ld [mWaitKey], a
 
     call WaitForKeyFunction
 
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-    ld a, 1
+    ld a, 1  ; Next state: Level0
     ld [wGameState],a
     jp NextGameState
 
