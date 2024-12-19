@@ -6,7 +6,7 @@ ASSETS = assets/player_east.2bpp \
 
 all: foxbox.gb
 
-foxbox.gb: foxbox.o sprobjs_lib.o
+foxbox.gb: foxbox.o sprobjs_lib.o vblank_utils.o
 	rgblink -n foxbox.sym -o $@ $^
 	rgbfix -v -p 0xFF $@
 

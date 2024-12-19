@@ -14,19 +14,24 @@ SECTION "Header", ROM0[$100]
 
 SECTION "Code", ROM0
 EntryPoint:
-    ; Wait for VBlank
-    ld a, [rLY]
-    cp a, 144
-    jr c, EntryPoint
-    ; Do not turn the LCD off outside of VBlank
+    ; Shut down audio circuitry
+    xor a
+    ld [rNR52], a
+    ; Set initial game state to Title Screen
+    ld [wGameState], a
 
-    ; Disable screen
-    xor a, a
-    ld [rLCDC], a
+    ; Wait for the vertical blank phase before initiating the library
+    call WaitForOneVBlank
 
     ; Initialize Sprite Object Library.
     call InitSprObjLib
     
+    ; Disable screen
+    xor a, a
+    ld [rLCDC], a
+
+
+
     ; Copy the tile data
     ld de, Tiles
     ld hl, $9000
@@ -1204,4 +1209,4 @@ wDestX: db
 wFurtherY: db
 wFurtherX: db
 wPushingCrate: db
-wGameState: db
+wGameState: db ; 0:Title, 1:Level0
