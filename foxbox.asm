@@ -9,7 +9,8 @@ def WEST equ 3
 ; Levels
 def TITLESCREEN equ 0
 def LEVEL0 equ 1
-def ENDSCREEN equ 2
+def LEVEL1 equ 2
+def ENDSCREEN equ 3
 
 
 SECTION "Header", ROM0[$100]
@@ -104,6 +105,9 @@ NextGameState::
     cp ENDSCREEN
     call z, InitEndscreenState
     ld a, [wGameState]
+    cp LEVEL1
+    call z, InitLevel1State
+    ld a, [wGameState]
     cp LEVEL0 ; 1 = Level0
     call z, InitLevel0State
     ld a, [wGameState]
@@ -114,6 +118,9 @@ NextGameState::
     ld a, [wGameState]
     cp ENDSCREEN
     jp z, UpdateEndscreenState
+    ld a, [wGameState]
+    cp LEVEL1
+    jp z, UpdateLevel1State
     ld a, [wGameState]
     cp LEVEL0 ; 1 = Level0
     jp z, UpdateLevel0State
@@ -132,6 +139,8 @@ InitTitleState::
     ld [wPlayerY], a
     ld a, $50 + OAM_X_OFS
     ld [wPlayerX], a
+    ld a, SOUTH
+    ld [wPlayerDir], a
 
     ; Place Crates
     ld a, $50 + OAM_Y_OFS
@@ -183,11 +192,13 @@ InitEndscreenState::
     ld bc, TilemapEndscreenEnd - TilemapEndscreen
     call Memcopy
 
-    ; Place player on title screen
+    ; Place player on endscreen
     ld a, $50 + OAM_Y_OFS
     ld [wPlayerY], a
     ld a, $50 + OAM_X_OFS
     ld [wPlayerX], a
+    ld a, SOUTH
+    ld [wPlayerDir], a
 
     ; Place Crates off-screen
     ld a, 0
@@ -241,6 +252,45 @@ InitLevel0State::
 
     ; Place Player
     ; Level 0
+    ld a, $60 + OAM_Y_OFS
+    ld [wPlayerY], a
+    ld a, $10 + OAM_X_OFS
+    ld [wPlayerX], a
+
+    ; Place Crates
+    ld a, $40 + OAM_Y_OFS
+    ld [wCrate0Y], a
+    ld a, $30 + OAM_X_OFS
+    ld [wCrate0X], a
+
+    ld a, $40 + OAM_Y_OFS
+    ld [wCrate1Y], a
+    ld a, $40 + OAM_X_OFS
+    ld [wCrate1X], a
+
+    ld a, $40 + OAM_Y_OFS
+    ld [wCrate2Y], a
+    ld a, $50 + OAM_X_OFS
+    ld [wCrate2X], a
+
+    ; Turn the LCD on
+    ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_OBJ16
+    ld [rLCDC], a
+
+    ret
+
+UpdateLevel0State::
+    jp Main
+
+InitLevel1State::
+    ; Copy the tilemap
+    ld de, TilemapLevel1
+    ld hl, $9800
+    ld bc, TilemapLevel1End - TilemapLevel1
+    call Memcopy
+
+    ; Place Player
+    ; Level 1
     ld a, 112 + OAM_Y_OFS
     ld [wPlayerY], a
     ld a, 16 + OAM_X_OFS
@@ -268,7 +318,7 @@ InitLevel0State::
 
     ret
 
-UpdateLevel0State::
+UpdateLevel1State::
     jp Main
 
 ClearAllSprites::
@@ -1218,6 +1268,31 @@ TilesEnd:
 
 ;SECTION "Tilemap", ROM0
 TilemapLevel0:
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $0c, $0e, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $0c, $0e, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
+
+	db $09, $0b, $0d, $0f, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $0d, $0f, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+
+	db $08, $0a, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $0c, $0e, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $0d, $0f, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
+
+	db $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+
+TilemapLevel0End:
+
+TilemapLevel1:
 	db $00, $00, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 	db $00, $00, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 	db $00, $00, $08, $0a, $04, $06, $04, $06, $04, $06, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
@@ -1240,7 +1315,7 @@ TilemapLevel0:
 	db $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 	db $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 
-TilemapLevel0End:
+TilemapLevel1End:
 
 TilemapTitle:
 	db $00, $00, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
