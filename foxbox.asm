@@ -10,7 +10,8 @@ def WEST equ 3
 def TITLESCREEN equ 0
 def LEVEL0 equ 1
 def LEVEL1 equ 2
-def ENDSCREEN equ 3
+def LEVEL2 equ 3
+def ENDSCREEN equ 4
 
 
 SECTION "Header", ROM0[$100]
@@ -105,6 +106,9 @@ NextGameState::
     cp ENDSCREEN
     call z, InitEndscreenState
     ld a, [wGameState]
+    cp LEVEL2
+    call z, InitLevel2State
+    ld a, [wGameState]
     cp LEVEL1
     call z, InitLevel1State
     ld a, [wGameState]
@@ -118,6 +122,9 @@ NextGameState::
     ld a, [wGameState]
     cp ENDSCREEN
     jp z, UpdateEndscreenState
+    ld a, [wGameState]
+    cp LEVEL2
+    jp z, UpdateLevel2State
     ld a, [wGameState]
     cp LEVEL1
     jp z, UpdateLevel1State
@@ -157,6 +164,11 @@ InitTitleState::
     ld [wCrate2Y], a
     ld a, $50 + OAM_X_OFS
     ld [wCrate2X], a
+
+    ld a, $00 + OAM_Y_OFS
+    ld [wCrate3Y], a
+    ld a, $a0 + OAM_X_OFS
+    ld [wCrate3X], a
 
     call ResetShadowOAM
     call BlitPlayer
@@ -216,6 +228,11 @@ InitEndscreenState::
     ld a, 0
     ld [wCrate2X], a
 
+    ld a, 0
+    ld [wCrate3Y], a
+    ld a, 0
+    ld [wCrate3X], a
+
     call ResetShadowOAM
     call BlitPlayer
     ; call BlitCrates
@@ -256,6 +273,8 @@ InitLevel0State::
     ld [wPlayerY], a
     ld a, $10 + OAM_X_OFS
     ld [wPlayerX], a
+    ld a, SOUTH
+    ld [wPlayerDir], a
 
     ; Place Crates
     ld a, $40 + OAM_Y_OFS
@@ -272,6 +291,11 @@ InitLevel0State::
     ld [wCrate2Y], a
     ld a, $50 + OAM_X_OFS
     ld [wCrate2X], a
+
+    ld a, $00 + OAM_Y_OFS
+    ld [wCrate3Y], a
+    ld a, $a0 + OAM_X_OFS ; Offscreen target
+    ld [wCrate3X], a
 
     ; Turn the LCD on
     ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_OBJ16
@@ -291,10 +315,58 @@ InitLevel1State::
 
     ; Place Player
     ; Level 1
+    ld a, $40 + OAM_Y_OFS
+    ld [wPlayerY], a
+    ld a, $50 + OAM_X_OFS
+    ld [wPlayerX], a
+    ld a, SOUTH
+    ld [wPlayerDir], a
+
+    ; Place Crates
+    ld a, $30 + OAM_Y_OFS
+    ld [wCrate0Y], a
+    ld a, $50 + OAM_X_OFS
+    ld [wCrate0X], a
+
+    ld a, $40 + OAM_Y_OFS
+    ld [wCrate1Y], a
+    ld a, $40 + OAM_X_OFS
+    ld [wCrate1X], a
+
+    ld a, $40 + OAM_Y_OFS
+    ld [wCrate2Y], a
+    ld a, $60 + OAM_X_OFS
+    ld [wCrate2X], a
+
+    ld a, $50 + OAM_Y_OFS
+    ld [wCrate3Y], a
+    ld a, $50 + OAM_X_OFS
+    ld [wCrate3X], a
+
+    ; Turn the LCD on
+    ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_OBJ16
+    ld [rLCDC], a
+
+    ret
+
+UpdateLevel1State::
+    jp Main
+
+InitLevel2State::
+    ; Copy the tilemap
+    ld de, TilemapLevel2
+    ld hl, $9800
+    ld bc, TilemapLevel2End - TilemapLevel2
+    call Memcopy
+
+    ; Place Player
+    ; Level 1
     ld a, 112 + OAM_Y_OFS
     ld [wPlayerY], a
     ld a, 16 + OAM_X_OFS
     ld [wPlayerX], a
+    ld a, SOUTH
+    ld [wPlayerDir], a
 
     ; Place Crates
     ld a, 80 + OAM_Y_OFS
@@ -312,13 +384,18 @@ InitLevel1State::
     ld a, 48 + OAM_X_OFS
     ld [wCrate2X], a
 
+    ld a, $00 + OAM_Y_OFS
+    ld [wCrate3Y], a
+    ld a, $a0 + OAM_X_OFS ; Offscreen target
+    ld [wCrate3X], a
+
     ; Turn the LCD on
     ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_OBJ16
     ld [rLCDC], a
 
     ret
 
-UpdateLevel1State::
+UpdateLevel2State::
     jp Main
 
 ClearAllSprites::
@@ -411,6 +488,13 @@ BlitCrates:
     ld a, [wCrate2Y]
     ld b, a
     ld a, [wCrate2X]
+    ld c, a
+    ld hl, CrateMetasprite
+    call RenderMetaspriteUnscaled
+
+    ld a, [wCrate3Y]
+    ld b, a
+    ld a, [wCrate3X]
     ld c, a
     ld hl, CrateMetasprite
     call RenderMetaspriteUnscaled
@@ -511,6 +595,9 @@ CheckLeft:
     ld e, 2  ; Crate number
     call IsCrate2
     jp z, .canCrateMoveLeft
+    ld e, 3  ; Crate number
+    call IsCrate3
+    jp z, .canCrateMoveLeft
 
     ; No crate there.
     jp .moveLeft
@@ -549,6 +636,8 @@ CheckLeft:
     call IsCrate1
     jp z, Main
     call IsCrate2
+    jp z, Main
+    call IsCrate3
     jp z, Main
     ; OK, so the crate can be pushed.  Do it.
 
@@ -622,6 +711,9 @@ IsCrateRight:
     ld e, 2  ; Crate number
     call IsCrate2
     jp z, CanCrateMoveRight
+    ld e, 3  ; Crate number
+    call IsCrate3
+    jp z, CanCrateMoveRight
 
     ; No crate there.
     jp MoveRight
@@ -660,6 +752,8 @@ CanCrateMoveRight:
     call IsCrate1
     jp z, Main
     call IsCrate2
+    jp z, Main
+    call IsCrate3
     jp z, Main
     ; OK, so the crate can be pushed.  Do it.
 
@@ -733,6 +827,9 @@ IsCrateUp:
     ld e, 2  ; Crate number
     call IsCrate2
     jp z, CanCrateMoveUp
+    ld e, 3  ; Crate number
+    call IsCrate3
+    jp z, CanCrateMoveUp
 
     ; No crate there.
     jp MoveUp
@@ -771,6 +868,8 @@ CanCrateMoveUp:
     call IsCrate1
     jp z, Main
     call IsCrate2
+    jp z, Main
+    call IsCrate3
     jp z, Main
     ; OK, so the crate can be pushed.  Do it.
 
@@ -844,6 +943,9 @@ IsCrateDown:
     ld e, 2  ; Crate number
     call IsCrate2
     jp z, CanCrateMoveDown
+    ld e, 3  ; Crate number
+    call IsCrate3
+    jp z, CanCrateMoveDown
 
     ; No crate there.
     jp MoveDown
@@ -882,6 +984,8 @@ CanCrateMoveDown:
     call IsCrate1
     jp z, Main
     call IsCrate2
+    jp z, Main
+    call IsCrate3
     jp z, Main
     ; OK, so the crate can be pushed.  Do it.
 
@@ -942,6 +1046,17 @@ IsCrate2:
     cp a, b
     ret  ; Z=true means Y, X both match.
 
+IsCrate3:
+    ; Is there a crate?
+    ; b: dest x oam
+    ; c: dest y oam
+    ld a, [wCrate3Y]
+    cp a, c
+    ret nz  ; Y doesn't match, bail.
+    ld a, [wCrate3X]
+    cp a, b
+    ret  ; Z=true means Y, X both match.
+
 
 SECTION "Utilities", ROM0
 ; Get the active X axis for the crate we're pushing.
@@ -954,6 +1069,8 @@ PushingCrateX:
     jp z, .pushingCrateX1
     cp 2
     jp z, .pushingCrateX2
+    cp 3
+    jp z, .pushingCrateX3
     jp Main ; Shouldn't happen
 .pushingCrateX0:
     ld hl, wCrate0X
@@ -963,6 +1080,9 @@ PushingCrateX:
     ret
 .pushingCrateX2:
     ld hl, wCrate2X
+    ret
+.pushingCrateX3:
+    ld hl, wCrate3X
     ret
 
 
@@ -976,6 +1096,8 @@ PushingCrateY:
     jp z, .pushingCrateY1
     cp 2
     jp z, .pushingCrateY2
+    cp 3
+    jp z, .pushingCrateY3
     jp Main ; Shouldn't happen
 .pushingCrateY0:
     ld hl, wCrate0Y
@@ -985,6 +1107,9 @@ PushingCrateY:
     ret
 .pushingCrateY2:
     ld hl, wCrate2Y
+    ret
+.pushingCrateY3:
+    ld hl, wCrate3Y
     ret
 
 ; For each crate, check if it's on a target.
@@ -1015,6 +1140,16 @@ DoSuccessCheck:
     ld a, [wCrate2Y]
     ld c, a
     ld a, [wCrate2X]
+    ld b, a
+    call GetTileByOam ; Returns tile address in hl
+    ld a, [hl]
+    call IsTargetTile
+    jp nz, AfterSuccessCheck
+
+    ; If crate is on a target, good.
+    ld a, [wCrate3Y]
+    ld c, a
+    ld a, [wCrate3X]
     ld b, a
     call GetTileByOam ; Returns tile address in hl
     ld a, [hl]
@@ -1268,7 +1403,7 @@ TilesEnd:
 
 ;SECTION "Tilemap", ROM0
 TilemapLevel0:
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$0c,0,0,0,0,0,0,0,0,0,0,0
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 	db $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
 	db $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
@@ -1293,7 +1428,32 @@ TilemapLevel0:
 TilemapLevel0End:
 
 TilemapLevel1:
-	db $00, $00, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$0c,0,0,0,0,0,0,0,0,0,0,0
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $00, $00, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $00, $00, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $00, $00, $08, $0a, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+                                                                                                          
+	db $00, $00, $00, $00, $09, $0b, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $00, $00, $08, $0a, $04, $06, $0c, $0e, $04, $06, $0c, $0e, $04, $06, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $00, $00, $09, $0b, $05, $07, $0d, $0f, $05, $07, $0d, $0f, $05, $07, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $08, $0a, $08, $0a, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $09, $0b, $09, $0b, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+                                                                                                          
+	db $00, $00, $08, $0a, $04, $06, $04, $06, $0c, $0e, $04, $06, $0c, $0e, $04, $06, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $09, $0b, $05, $07, $05, $07, $0d, $0f, $05, $07, $0d, $0f, $05, $07, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $08, $0a, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $09, $0b, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+                                                                                                          
+	db $00, $00, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+
+TilemapLevel1End:
+
+TilemapLevel2:
+	db $00, $00, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, $00, $00, $00, $00, $00, $00, $0c,0,0,0,0,0,0,0,0,0,0,0
 	db $00, $00, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 	db $00, $00, $08, $0a, $04, $06, $04, $06, $04, $06, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 	db $00, $00, $09, $0b, $05, $07, $05, $07, $05, $07, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
@@ -1315,7 +1475,7 @@ TilemapLevel1:
 	db $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 	db $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 
-TilemapLevel1End:
+TilemapLevel2End:
 
 TilemapTitle:
 	db $00, $00, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
@@ -1485,6 +1645,8 @@ wCrate1Y: db
 wCrate1X: db
 wCrate2Y: db
 wCrate2X: db
+wCrate3Y: db
+wCrate3X: db
 wDestY: db
 wDestX: db
 wFurtherY: db
