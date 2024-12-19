@@ -6,6 +6,12 @@ def EAST equ 1
 def NORTH equ 2
 def WEST equ 3
 
+; Levels
+def TITLESCREEN equ 0
+def LEVEL0 equ 1
+def ENDSCREEN equ 2
+
+
 SECTION "Header", ROM0[$100]
 
     jp EntryPoint
@@ -95,7 +101,10 @@ NextGameState::
 
     ; Initiate the next state
     ld a, [wGameState]
-    cp 1 ; 1 = Level0
+    cp ENDSCREEN
+    call z, InitEndscreenState
+    ld a, [wGameState]
+    cp LEVEL0 ; 1 = Level0
     call z, InitLevel0State
     ld a, [wGameState]
     and a ; 0 = Title
@@ -103,7 +112,10 @@ NextGameState::
 
     ; Update the next state
     ld a, [wGameState]
-    cp 1 ; 1 = Level0
+    cp ENDSCREEN
+    jp z, UpdateEndscreenState
+    ld a, [wGameState]
+    cp LEVEL0 ; 1 = Level0
     jp z, UpdateLevel0State
     jp UpdateTitleState
 
@@ -161,6 +173,62 @@ UpdateTitleState::
     call WaitForKeyFunction
 
     ld a, 1  ; Next state: Level0
+    ld [wGameState],a
+    jp NextGameState
+
+InitEndscreenState::
+    ; Copy the tilemap
+    ld de, TilemapEndscreen
+    ld hl, $9800
+    ld bc, TilemapEndscreenEnd - TilemapEndscreen
+    call Memcopy
+
+    ; Place player on title screen
+    ld a, $50 + OAM_Y_OFS
+    ld [wPlayerY], a
+    ld a, $50 + OAM_X_OFS
+    ld [wPlayerX], a
+
+    ; Place Crates off-screen
+    ld a, 0
+    ld [wCrate0Y], a
+    ld a, 0
+    ld [wCrate0X], a
+
+    ld a, 0
+    ld [wCrate1Y], a
+    ld a, 0
+    ld [wCrate1X], a
+
+    ld a, 0
+    ld [wCrate2Y], a
+    ld a, 0
+    ld [wCrate2X], a
+
+    call ResetShadowOAM
+    call BlitPlayer
+    ; call BlitCrates
+
+    ; Push sprites to OAM
+    ld a, HIGH(wShadowOAM)
+    call hOAMDMA
+
+    ; Turn the LCD on
+    ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_OBJ16
+    ld [rLCDC], a
+
+    ret
+
+UpdateEndscreenState::
+
+    ; Save the passed value into the variable: mWaitKey
+    ; The WaitForKeyFunction always checks against this variable
+    ld a, PADF_START
+    ld [mWaitKey], a
+
+    call WaitForKeyFunction
+
+    ld a, TITLESCREEN  ; Next state: Title screen
     ld [wGameState],a
     jp NextGameState
 
@@ -673,7 +741,7 @@ MoveUp:
 CheckDown:
     ld a, [wCurKeys]
     and a, PADF_DOWN
-    jp z, Main
+    jp z, CheckStart
 Down:
     ; Move the player one square down.
 
@@ -780,6 +848,15 @@ MoveDown:
     jp Main
 
 
+CheckStart:
+    ld a, [wCurKeys]
+    and a, PADF_START
+    jp z, Main
+LevelStart:
+    ld a, [wGameState]
+    inc a
+    ld [wGameState], a
+    jp NextGameState
 
 
 IsCrate0:
@@ -1189,6 +1266,31 @@ TilemapTitle:
 	db $00, $00, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
 
 TilemapTitleEnd:
+
+TilemapEndscreen:
+	db $00, $00, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $08, $0a, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $08, $0a, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $09, $0b, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $09, $0b, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
+
+	db $09, $0b, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $04, $06, $04, $06, $18, $1a, $14, $16, $18, $1a, $14, $16, $18, $1a, $04, $06, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $05, $07, $05, $07, $19, $1b, $15, $17, $19, $1b, $15, $17, $19, $1b, $05, $07, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+
+	db $08, $0a, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $04, $06, $04, $06, $18, $1a, $14, $16, $18, $1a, $14, $16, $18, $1a, $04, $06, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $09, $0b, $05, $07, $05, $07, $19, $1b, $15, $17, $19, $1b, $15, $17, $19, $1b, $05, $07, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $08, $0a, $08, $0a, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $04, $06, $08, $0a, $08, $0a, 0,0,0,0,0,0,0,0,0,0,0,0
+
+	db $09, $0b, $09, $0b, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $05, $07, $09, $0b, $09, $0b, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $08, $0a, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+	db $00, $00, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $09, $0b, $00, $00, 0,0,0,0,0,0,0,0,0,0,0,0
+
+TilemapEndscreenEnd:
 
 ;SECTION "Objects", ROM0
 Objects:
