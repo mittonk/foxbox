@@ -329,6 +329,10 @@ WaitVBlank2:
     xor a, 1
     ld [wAnimCounter], a
 
+    ; Check if all boxes are on targets.
+    jp DoSuccessCheck  ; Subroutine predicate instead?
+AfterSuccessCheck:
+
     ; Check for input.
     call UpdateKeys
 
@@ -856,6 +860,46 @@ PushingCrateY:
     ld hl, wCrate2Y
     ret
 
+; For each crate, check if it's on a target.
+; If all are, go to next level.
+; If not, head back up to Main.
+DoSuccessCheck:
+    ; If crate is on a target, good.
+    ld a, [wCrate0Y]
+    ld c, a
+    ld a, [wCrate0X]
+    ld b, a
+    call GetTileByOam ; Returns tile address in hl
+    ld a, [hl]
+    call IsTargetTile
+    jp nz, AfterSuccessCheck
+
+    ; If crate is on a target, good.
+    ld a, [wCrate1Y]
+    ld c, a
+    ld a, [wCrate1X]
+    ld b, a
+    call GetTileByOam ; Returns tile address in hl
+    ld a, [hl]
+    call IsTargetTile
+    jp nz, AfterSuccessCheck
+
+    ; If crate is on a target, good.
+    ld a, [wCrate2Y]
+    ld c, a
+    ld a, [wCrate2X]
+    ld b, a
+    call GetTileByOam ; Returns tile address in hl
+    ld a, [hl]
+    call IsTargetTile
+    jp nz, AfterSuccessCheck
+
+    ; Stage cleared, do next.
+    ld a, [wGameState]
+    inc a
+    ld [wGameState], a
+    jp NextGameState
+
 
 ; Convert a OAM position to a tilemap address
 ; hl = $9800 + pixelX + pixelY * 32
@@ -911,6 +955,12 @@ GetTileByPixel:
 ; @return z: set if a is a wall.
 IsWallTile:
     cp a, $08  ; Top-left tile of a wall
+    ret
+
+; @param a: tile ID
+; @return z: set if a is a target.
+IsTargetTile:
+    cp a, $0c  ; Top-left tile of a target
     ret
 
 ; Copy bytes from one area to another.
