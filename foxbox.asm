@@ -17,9 +17,6 @@ EntryPoint:
     ; Shut down audio circuitry
     xor a
     ld [rNR52], a
-    ; Set initial game state to Title Screen
-    ld a, 0 ; TODO (mittonk)
-    ld [wGameState], a
 
     ; Wait for the vertical blank phase before initiating the library
     call WaitForOneVBlank
@@ -76,6 +73,9 @@ EntryPoint:
     ld [wFurtherX], a
     ld [wPushingCrate], a
     ld [wPlayerDir], a
+    ; Set initial game state to Title Screen
+    ld [wGameState], a ; 0: Title Screen
+
 
 
 ;SECTION "FSM", ROM0
@@ -811,45 +811,6 @@ IsCrate2:
     cp a, b
     ret  ; Z=true means Y, X both match.
 
-
-SECTION "UpdateKeys", ROM0
-
-    ; https://gbdev.io/gb-asm-tutorial/part2/input.html
-UpdateKeys::
-    ; Poll half the controller
-    ld a, P1F_GET_BTN
-    call .onenibble
-    ld b, a ; B7-4 = 1; B3-0 = unpressed buttons
-
-    ; Poll the other half
-    ld a, P1F_GET_DPAD
-    call .onenibble
-    swap a ; A3-0 = unpressed directions; A7-4 = 1
-    xor a, b ; A = pressed buttons + directions
-    ld b, a ; B = pressed buttons + directions
-
-    ; And release the controller
-    ld a, P1F_GET_NONE
-    ldh [rP1], a
-
-    ; Combine with previous wCurKeys to make wNewKeys
-    ld a, [wCurKeys]
-    xor a, b ; A = keys that changed state
-    and a, b ; A = keys that changed to pressed
-    ld [wNewKeys], a
-    ld a, b
-    ld [wCurKeys], a
-    ret
-
-.onenibble
-    ldh [rP1], a ; switch the key matrix
-    call .knownret ; burn 10 cycles calling a known ret
-    ldh a, [rP1] ; ignore value while waiting for the key matrix to settle
-    ldh a, [rP1]
-    ldh a, [rP1] ; this read counts
-    or a, $F0 ; A7-4 = 1; A3-0 = unpressed keys
-.knownret
-    ret
 
 SECTION "Utilities", ROM0
 ; Get the active X axis for the crate we're pushing.
