@@ -1,4 +1,5 @@
-ASSETS = assets/player_east.2bpp \
+ASSETS = assets/crate.2bpp \
+			assets/player_east.2bpp \
          assets/player_east2.2bpp \
          assets/player_north.2bpp \
          assets/player_south.2bpp \

@@ -472,34 +472,60 @@ BlitPlayer:
 BlitCrates:
     ; Blit crates
     ld a, [wCrate0Y]
+    ld c, a
+    ld a, [wCrate0X]
+    ld b, a
+    call ChooseCrateSprite
+    ld a, [wCrate0Y]
     ld b, a
     ld a, [wCrate0X]
     ld c, a
-    ld hl, CrateMetasprite
     call RenderMetaspriteUnscaled
 
+    ld a, [wCrate1Y]
+    ld c, a
+    ld a, [wCrate1X]
+    ld b, a
+    call ChooseCrateSprite
     ld a, [wCrate1Y]
     ld b, a
     ld a, [wCrate1X]
     ld c, a
-    ld hl, CrateMetasprite
     call RenderMetaspriteUnscaled
 
+    ld a, [wCrate2Y]
+    ld c, a
+    ld a, [wCrate2X]
+    ld b, a
+    call ChooseCrateSprite
     ld a, [wCrate2Y]
     ld b, a
     ld a, [wCrate2X]
     ld c, a
-    ld hl, CrateMetasprite
     call RenderMetaspriteUnscaled
 
+    ld a, [wCrate3Y]
+    ld c, a
+    ld a, [wCrate3X]
+    ld b, a
+    call ChooseCrateSprite
     ld a, [wCrate3Y]
     ld b, a
     ld a, [wCrate3X]
     ld c, a
-    ld hl, CrateMetasprite
     call RenderMetaspriteUnscaled
     ret
 
+ChooseCrateSprite:
+    call GetTileByOam ; Returns tile address in hl
+    ld a, [hl]
+    call IsTargetTile
+    jp z, .onTarget
+    ld hl, CrateMetasprite
+    ret
+.onTarget:
+    ld hl, CrateMetasprite2
+    ret
 
 WaitVBlank:
     ; Wait until it's *not* VBlank
@@ -1541,43 +1567,9 @@ PlayerEast2TileData: INCBIN "assets/player_east2.2bpp"
     ; 0c, 0e Player North
 PlayerNorthTileData: INCBIN "assets/player_north.2bpp"
 
-    ; 10 Crate A
-    dw `33333333
-    dw `33222222
-    dw `32333333
-    dw `32332222
-    dw `32323222
-    dw `32322322
-    dw `32322232
-    dw `32322223
-
-    dw `32322223
-    dw `32322232
-    dw `32322322
-    dw `32323222
-    dw `32332222
-    dw `32333333
-    dw `33222222
-    dw `33333333
-
-    ; 12 Crate B
-    dw `33333333
-    dw `22222233
-    dw `33333323
-    dw `22223323
-    dw `22232323
-    dw `22322323
-    dw `23222323
-    dw `32222323
-
-    dw `32222323
-    dw `23222323
-    dw `22322323
-    dw `22232323
-    dw `22223323
-    dw `33333323
-    dw `22222233
-    dw `33333333
+    ; 10, 12 Crate
+    ; 14, 16 Crate on target
+CrateTileData: INCBIN "assets/crate.2bpp"
 
 ObjectsEnd:
 
@@ -1624,6 +1616,11 @@ PlayerMetaspriteWest2:  ; Reuse East2 tiles with some flipping and shuffling
 CrateMetasprite:
     .metasprite1    db 0,0,$10,0
     .metasprite2    db 0,8,$12,0
+    .metaspriteEnd  db 128
+
+CrateMetasprite2:  ; On target
+    .metasprite1    db 0,0,$14,0
+    .metasprite2    db 0,8,$16,0
     .metaspriteEnd  db 128
 
 SECTION "Counter", WRAM0
