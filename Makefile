@@ -4,9 +4,14 @@ ASSETS = assets/player_east.2bpp \
          assets/player_south.2bpp \
 			assets/title.2bpp
 
+OBJS = foxbox.o \
+		 sprobjs_lib.o \
+		 input_utils.o \
+		 vblank_utils.o
+
 all: foxbox.gb
 
-foxbox.gb: foxbox.o sprobjs_lib.o vblank_utils.o
+foxbox.gb: $(OBJS)
 	rgblink -n foxbox.sym -o $@ $^
 	rgbfix -v -p 0xFF $@
 

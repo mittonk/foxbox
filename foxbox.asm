@@ -18,6 +18,7 @@ EntryPoint:
     xor a
     ld [rNR52], a
     ; Set initial game state to Title Screen
+    ld a, 0 ; TODO (mittonk)
     ld [wGameState], a
 
     ; Wait for the vertical blank phase before initiating the library
@@ -30,23 +31,10 @@ EntryPoint:
     xor a, a
     ld [rLCDC], a
 
-
-
     ; Copy the tile data
     ld de, Tiles
     ld hl, $9000
     ld bc, TilesEnd - Tiles
-    call Memcopy
-
-    ; Copy the tilemap
-    ; TODO (kmitton): FSM to handle title screen vs gameplay.
-    ; ld de, TilemapLevel0
-    ; ld hl, $9800
-    ; ld bc, TilemapLevel0End - TilemapLevel0
-    ; call Memcopy
-    ld de, TilemapTitle
-    ld hl, $9800
-    ld bc, TilemapTitleEnd - TilemapTitle
     call Memcopy
 
     ; Copy the player and crate tiles
@@ -89,14 +77,45 @@ EntryPoint:
     ld [wPushingCrate], a
     ld [wPlayerDir], a
 
-    ; Place Player
-    ; Level 0
-    ; ld a, 112 + OAM_Y_OFS
-    ; ld [wPlayerY], a
-    ; ld a, 16 + OAM_X_OFS
-    ; ld [wPlayerX], a
 
-    ; Title screen
+;SECTION "FSM", ROM0
+NextGameState::
+
+    ; Do not turn the LCD off outside of VBlank
+    call WaitForOneVBlank
+
+    ;call ClearBackground
+
+    ; Turn the LCD off
+    xor a
+    ld [rLCDC], a
+
+    ; Clear all sprites
+    call ClearAllSprites
+
+    ; Initiate the next state
+    ld a, [wGameState]
+    cp 1 ; 1 = Level0
+    call z, InitLevel0State
+    ld a, [wGameState]
+    and a ; 0 = Title
+    call z, InitTitleState
+
+    ; Update the next state
+    ld a, [wGameState]
+    cp 1 ; 1 = Level0
+    jp z, UpdateLevel0State
+    jp UpdateTitleState
+
+
+InitTitleState::
+    ; Copy the tilemap
+    ld de, TilemapTitle
+    ld hl, $9800
+    ld bc, TilemapTitleEnd - TilemapTitle
+    call Memcopy
+
+    ; Place player on title screen
     ld a, $50 + OAM_Y_OFS
     ld [wPlayerY], a
     ld a, $50 + OAM_X_OFS
@@ -118,12 +137,91 @@ EntryPoint:
     ld a, 48 + OAM_X_OFS
     ld [wCrate2X], a
 
+    call ResetShadowOAM
+    call BlitPlayer
+
+    ; Push sprites to OAM
+    ld a, HIGH(wShadowOAM)
+    call hOAMDMA
+
+    ; Turn the LCD on
+    ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_OBJ16
+    ld [rLCDC], a
+
+    ret
+
+UpdateTitleState::
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ; Wait for A
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    ; Save the passed value into the variable: mWaitKey
+    ; The WaitForKeyFunction always checks against this variable
+    ld a, PADF_A
+    ld [mWaitKey], a
+
+    call WaitForKeyFunction
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    ld a, 1
+    ld [wGameState],a
+    jp NextGameState
+
+InitLevel0State::
+    ; Copy the tilemap
+    ld de, TilemapLevel0
+    ld hl, $9800
+    ld bc, TilemapLevel0End - TilemapLevel0
+    call Memcopy
+
+    ; Place Player
+    ; Level 0
+    ld a, 112 + OAM_Y_OFS
+    ld [wPlayerY], a
+    ld a, 16 + OAM_X_OFS
+    ld [wPlayerX], a
+
+    ; Place Crates
+    ld a, 80 + OAM_Y_OFS
+    ld [wCrate0Y], a
+    ld a, 32 + OAM_X_OFS
+    ld [wCrate0X], a
+
+    ld a, 96 + OAM_Y_OFS
+    ld [wCrate1Y], a
+    ld a, 32 + OAM_X_OFS
+    ld [wCrate1X], a
+
+    ld a, 96 + OAM_Y_OFS
+    ld [wCrate2Y], a
+    ld a, 48 + OAM_X_OFS
+    ld [wCrate2X], a
+
+    ; Turn the LCD on
+    ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_OBJ16
+    ld [rLCDC], a
+
+    ret
+
+UpdateLevel0State::
+    jp Main
+
+ClearAllSprites::
+    ret
+
 ;SECTION "Main", ROM0
 
 ; Main game loop.
 Main::
     call ResetShadowOAM
+    call BlitPlayer
+    call BlitCrates
+    jp WaitVBlank
 
+BlitPlayer:
     ; Blit player
     ld a, [wPlayerDir]
     cp a, 0
@@ -180,7 +278,9 @@ Main::
     ld a, [wPlayerX]
     ld c, a
     call RenderMetaspriteUnscaled
+    ret
 
+BlitCrates:
     ; Blit crates
     ld a, [wCrate0Y]
     ld b, a
@@ -202,8 +302,7 @@ Main::
     ld c, a
     ld hl, CrateMetasprite
     call RenderMetaspriteUnscaled
-
-
+    ret
 
 
 WaitVBlank:
@@ -722,7 +821,7 @@ IsCrate2:
 SECTION "UpdateKeys", ROM0
 
     ; https://gbdev.io/gb-asm-tutorial/part2/input.html
-UpdateKeys:
+UpdateKeys::
     ; Poll half the controller
     ld a, P1F_GET_BTN
     call .onenibble
@@ -1190,9 +1289,9 @@ wFrameCounter: db
 wAnimCounter: db
 
 SECTION "Input Variables", WRAM0
-wCurKeys: db
-wNewKeys: db
-wLastKeys: db
+wCurKeys:: db
+wNewKeys:: db
+wLastKeys:: db
 
 SECTION "Game Variables", WRAM0
 wPlayerY: db
