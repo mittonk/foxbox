@@ -1567,8 +1567,8 @@ PlayerEast2TileData: INCBIN "assets/player_east2.2bpp"
     ; 0c, 0e Player North
 PlayerNorthTileData: INCBIN "assets/player_north.2bpp"
 
-    ; 10, 12 Crate
-    ; 14, 16 Crate on target
+    ; 10 Crate-half
+    ; 12 Crate-half on target
 CrateTileData: INCBIN "assets/crate.2bpp"
 
 ObjectsEnd:
@@ -1615,12 +1615,12 @@ PlayerMetaspriteWest2:  ; Reuse East2 tiles with some flipping and shuffling
 
 CrateMetasprite:
     .metasprite1    db 0,0,$10,0
-    .metasprite2    db 0,8,$12,0
+    .metasprite2    db 0,8,$10,OAMF_XFLIP
     .metaspriteEnd  db 128
 
 CrateMetasprite2:  ; On target
-    .metasprite1    db 0,0,$14,0
-    .metasprite2    db 0,8,$16,0
+    .metasprite1    db 0,0,$12,0
+    .metasprite2    db 0,8,$12,OAMF_XFLIP
     .metaspriteEnd  db 128
 
 SECTION "Counter", WRAM0
