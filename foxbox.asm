@@ -198,6 +198,7 @@ UpdateTitleState::
 
     call WaitForKeyFunction
 
+    call SetCooldown
     ld a, 1  ; Next state: Level0
     ld [wGameState],a
     jp NextGameState
@@ -261,6 +262,7 @@ UpdateEndscreenState::
 
     call WaitForKeyFunction
 
+    call SetCooldown
     ld a, TITLESCREEN  ; Next state: Title screen
     ld [wGameState],a
     jp NextGameState
@@ -702,8 +704,8 @@ CheckLeft:
     ; All clear, move.
     ld a, [wDestX]
     ld [wPlayerX], a
-    jp SetCooldown
-
+    call SetCooldown
+    jp Main
 
 ; Then check the right button.
 CheckRight:
@@ -818,7 +820,8 @@ MoveRight:
     ; All clear, move.
     ld a, [wDestX]
     ld [wPlayerX], a
-    jp SetCooldown
+    call SetCooldown
+    jp Main
 
 
 ; Then check the up button.
@@ -934,7 +937,8 @@ MoveUp:
     ; All clear, move.
     ld a, [wDestY]
     ld [wPlayerY], a
-    jp SetCooldown
+    call SetCooldown
+    jp Main
 
 
 ; Then check the down button.
@@ -1050,18 +1054,21 @@ MoveDown:
     ; All clear, move.
     ld a, [wDestY]
     ld [wPlayerY], a
-    jp SetCooldown
+    call SetCooldown
+    jp Main
+
 
 SetCooldown:
     ld a, COOLDOWN
     ld [wCooldownCounter], a
-    jp Main
+    ret
 
 CheckStart:
     ld a, [wCurKeys]
     and a, PADF_START
     jp z, Main
 LevelStart:
+    call SetCooldown
     ld a, [wGameState]
     inc a
     ld [wGameState], a
