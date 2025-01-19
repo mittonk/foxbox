@@ -13,6 +13,9 @@ def LEVEL1 equ 2
 def LEVEL2 equ 3
 def ENDSCREEN equ 4
 
+def COOLDOWN equ 10
+def ANIMFRAME equ 8
+
 
 SECTION "Header", ROM0[$100]
 
@@ -73,6 +76,8 @@ EntryPoint:
     ld a, 0
     ld [wFrameCounter], a
     ld [wAnimCounter], a
+    ld [wAnimFrame], a
+    ld [wCooldownCounter], a
     ld [wCurKeys], a
     ld [wNewKeys], a
     ld [wDestY], a
@@ -425,7 +430,7 @@ BlitPlayer:
 
     ; TODO (mittonk): Fancy indexing, or a table in ROM, or similar?
 .south:
-    ld a, [wAnimCounter]
+    ld a, [wAnimFrame]
     cp a, 0
     jp nz, .south2
     ld hl, PlayerMetaspriteSouth
@@ -434,7 +439,7 @@ BlitPlayer:
     ld hl, PlayerMetaspriteSouth2
     jp .playerPos
 .east:
-    ld a, [wAnimCounter]
+    ld a, [wAnimFrame]
     cp a, 0
     jp nz, .east2
     ld hl, PlayerMetaspriteEast
@@ -443,7 +448,7 @@ BlitPlayer:
     ld hl, PlayerMetaspriteEast2
     jp .playerPos
 .north:
-    ld a, [wAnimCounter]
+    ld a, [wAnimFrame]
     cp a, 0
     jp nz, .north2
     ld hl, PlayerMetaspriteNorth
@@ -452,7 +457,7 @@ BlitPlayer:
     ld hl, PlayerMetaspriteNorth2
     jp .playerPos
 .west:
-    ld a, [wAnimCounter]
+    ld a, [wAnimFrame]
     cp a, 0
     jp nz, .west2
     ld hl, PlayerMetaspriteWest
@@ -545,17 +550,29 @@ WaitVBlank2:
     ld a, [wFrameCounter]
     inc a
     ld [wFrameCounter], a
-    cp a, 15 ; Every 15 frames (a quarter of a second), run the following code
+    cp a, 2 ; Every x frames (60/x Hz), run the following code
     jp nz, Main
 
     ; Reset the frame counter back to 0
     ld a, 0
     ld [wFrameCounter], a
 
+    ; TODO (mittonk): Animation counter
     ; Flip the animation counter
     ld a, [wAnimCounter]
-    xor a, 1
+    cp a, 0
+    jp z, .flipAnim
+    dec a
     ld [wAnimCounter], a
+    jp .afterAnim
+    ; Time to flip sprite animation frame
+.flipAnim:
+    ld a, ANIMFRAME
+    ld [wAnimCounter], a
+    ld a, [wAnimFrame]
+    xor a, 1
+    ld [wAnimFrame], a
+.afterAnim:
 
     ; Check if all boxes are on targets.
     jp DoSuccessCheck  ; Subroutine predicate instead?
@@ -563,6 +580,14 @@ AfterSuccessCheck:
 
     ; Check for input.
     call UpdateKeys
+
+    ; Check if cooldown timer is done.
+    ld a, [wCooldownCounter]
+    cp a, 0  ; TODO (mittonk): More idiomatic?
+    jp z, CheckLeft
+    dec a
+    ld [wCooldownCounter], a
+    jp Main
 
 ; First, check if the left button is pressed.
 CheckLeft:
@@ -677,7 +702,7 @@ CheckLeft:
     ; All clear, move.
     ld a, [wDestX]
     ld [wPlayerX], a
-    jp Main
+    jp SetCooldown
 
 
 ; Then check the right button.
@@ -793,7 +818,7 @@ MoveRight:
     ; All clear, move.
     ld a, [wDestX]
     ld [wPlayerX], a
-    jp Main
+    jp SetCooldown
 
 
 ; Then check the up button.
@@ -909,7 +934,7 @@ MoveUp:
     ; All clear, move.
     ld a, [wDestY]
     ld [wPlayerY], a
-    jp Main
+    jp SetCooldown
 
 
 ; Then check the down button.
@@ -1025,8 +1050,12 @@ MoveDown:
     ; All clear, move.
     ld a, [wDestY]
     ld [wPlayerY], a
-    jp Main
+    jp SetCooldown
 
+SetCooldown:
+    ld a, COOLDOWN
+    ld [wCooldownCounter], a
+    jp Main
 
 CheckStart:
     ld a, [wCurKeys]
@@ -1626,6 +1655,8 @@ CrateMetasprite2:  ; On target
 SECTION "Counter", WRAM0
 wFrameCounter: db
 wAnimCounter: db
+wAnimFrame: db 
+wCooldownCounter: db
 
 SECTION "Input Variables", WRAM0
 wCurKeys:: db
